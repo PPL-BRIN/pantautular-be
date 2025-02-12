@@ -45,4 +45,4 @@ jobs:
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
-          railway up --no-confirm
+          curl -X POST -H "Authorization: Bearer $RAILWAY_API_TOKEN" https://api.railway.app/deplo
