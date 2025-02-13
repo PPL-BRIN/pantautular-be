@@ -6,3 +6,6 @@ requests
 urllib3
 coverage
 dj_database_url
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.2.2
+djangorestframework-stubs==3.14.5
