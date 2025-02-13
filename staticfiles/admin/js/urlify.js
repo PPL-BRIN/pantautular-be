@@ -163,7 +163,7 @@
         s = s.trim();
         s = s.replace(/[-\s]+/g, '-'); // convert spaces to hyphens
         s = s.substring(0, num_chars); // trim to first num_chars chars
-        return s.replace(/-+$/g, ''); // trim any trailing hyphens
+        return s.replace(/-+$/, '');
     }
     window.URLify = URLify;
 }
