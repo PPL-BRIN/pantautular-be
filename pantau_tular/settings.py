@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-8j+#sbe$%%g-+&jas6jxg7i*e!z6r*d3uy)74t$p@5pfmtmwtu
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1","pantau-tular.up.railway.app"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1","pantautular-be-production.up.railway.app"]
 
 
 # Application definition
