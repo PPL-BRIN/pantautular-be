@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'hello',
     'corsheaders',
+    'silk',
 ]
 
 MIDDLEWARE = [
@@ -57,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware',
 ]
 
 ROOT_URLCONF = 'pantau_tular.urls'
@@ -136,8 +138,10 @@ STATIC_URL = 'static/'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://pantautular-fe.netlify.app"
+    "https://pantautular-fe.netlify.app",
+    "https://radiant-cobbler-73f044.netlify.app"
 ]
+
 
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -169,6 +173,6 @@ CORS_ALLOW_HEADERS = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = True
