@@ -7,6 +7,11 @@ class CaseLocationSerializer(serializers.Serializer):
     city = serializers.CharField(max_length=255)
 
 class SeverityCountsSerializer(serializers.Serializer):
-
+    hospitalisasi = serializers.IntegerField()
+    insiden = serializers.IntegerField()
+    mortalitas = serializers.IntegerField()
 
 class DiseaseSeverityStatsSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    severity_counts = SeverityCountsSerializer()
+    total_cases = serializers.IntegerField()
