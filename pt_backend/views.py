@@ -91,5 +91,18 @@ class DiseaseSeverityStatsView(APIView):
     def get(self, request):
         try:
             stats = self.service.get_disease_severity_stats()
-        except Exception as e:
             
+            if isinstance(stats, dict) and "error" in stats:
+                return Response(stats, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            serialized_data = self.serializer_class(stats, many=True).data
+            return Response({
+                "data": serialized_data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            print(f"ERROR: {str(e)}")
+            return Response(
+                {"error": "An unexpected error occurred. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
