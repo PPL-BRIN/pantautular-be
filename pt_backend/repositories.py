@@ -1,5 +1,6 @@
 from .models import Case, Disease, Location, News
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Count
 from .models import Case
 from .interfaces import CaseRepositoryInterface
 
@@ -12,6 +13,15 @@ class DiseaseRepository:
             return list(diseases)
         except ObjectDoesNotExist:
             return {"error": "Error retrieving diseases"}
+    
+    def get_disease_severity_stats(self):
+        try:
+            diseases = Disease.objects.prefetch_related('cases')
+            result = []
+            return result
+        except Exception as e:
+            print(f"Repository ERROR: {str(e)}")
+            return {"error": "Error retrieving disease severity statistics"}
 
 class LocationRepository:
     def get_all_locations_name(self):
@@ -23,7 +33,6 @@ class LocationRepository:
         except ObjectDoesNotExist:
             return {"error": "Error retrieving locations"}
         
-
 class NewsRepository:
     def get_all_news_name(self):
         try:
