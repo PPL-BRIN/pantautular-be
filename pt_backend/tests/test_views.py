@@ -2,7 +2,8 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from pt_backend.models import Case, Location, Disease
-from pt_backend.services import CacheService
+from pt_backend.services import CacheService, CaseService
+from pt_backend.repositories import CaseRepository
 import uuid
 import os
 from unittest.mock import patch, Mock
@@ -132,3 +133,35 @@ class CaseFilterPostTest(TestCase):
         response = self.client.post('/cases/locations/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(), {"detail": "Invalid API Key"})
+
+
+class CaseAgeDistributionTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.api_key = os.getenv("SECRET_API_KEY", "test-api-key")
+        self.client.credentials(HTTP_X_API_KEY=self.api_key)
+
+        # Mocking repository and service
+        self.repository = CaseRepository()
+        self.cache_service = CacheService()
+        self.service = CaseService(self.repository, self.cache_service)
+
+        # Create some case data to test distribution
+        self.disease = Disease.objects.create(name="COVID-19", level_of_alertness=5)
+        self.location = Location.objects.create(latitude=-6.9175, longitude=107.6191, city="Bandung")
+        self.case_under_12 = Case.objects.create(id=uuid.uuid4(), gender="Female", age=10, city="Bandung", status="terjangkit", disease=self.disease, location=self.location)
+        self.case_12_25 = Case.objects.create(id=uuid.uuid4(), gender="Male", age=20, city="Bandung", status="terjangkit", disease=self.disease, location=self.location)
+        self.case_26_45 = Case.objects.create(id=uuid.uuid4(), gender="Female", age=30, city="Bandung", status="terjangkit", disease=self.disease, location=self.location)
+        self.case_above_45 = Case.objects.create(id=uuid.uuid4(), gender="Male", age=50, city="Bandung", status="terjangkit", disease=self.disease, location=self.location)
+
+    def test_service_get_age_distribution(self):
+        age_distribution = self.service.get_age_distribution()
+
+        expected_distribution = {
+            "under_12": 1,
+            "age_12_25": 1,
+            "age_26_45": 1,
+            "above_45": 1 
+        }
+
+        self.assertEqual(age_distribution, expected_distribution)
