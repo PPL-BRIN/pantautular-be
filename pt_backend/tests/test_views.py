@@ -165,3 +165,33 @@ class CaseAgeDistributionTest(TestCase):
         }
 
         self.assertEqual(age_distribution, expected_distribution)
+
+    @patch('pt_backend.services.CaseService.get_age_distribution')
+    def test_case_age_distribution_view_success(self, mock_get_age_distribution):
+        mock_get_age_distribution.return_value = {
+            "under_12": 1,
+            "age_12_25": 1,
+            "age_26_45": 1,
+            "above_45": 1
+        }
+
+        response = self.client.get('/cases/age-distribution/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {
+            "under_12": 1,
+            "age_12_25": 1,
+            "age_26_45": 1,
+            "above_45": 1
+        })
+
+        mock_get_age_distribution.assert_called_once()
+
+    @patch('pt_backend.services.CaseService.get_age_distribution')
+    def test_case_age_distribution_view_failure(self, mock_get_age_distribution):
+        mock_get_age_distribution.side_effect = Exception("Service error")
+
+        response = self.client.get('/cases/age-distribution/')
+
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.data, {"error": "Service error"})
