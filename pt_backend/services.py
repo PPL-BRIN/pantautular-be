@@ -15,7 +15,9 @@ class CaseService(CaseRetrievalInterface):
             locations = self.repository.get_all_locations()
             self.cache_service.set(self.CACHE_KEY, locations, timeout=self.CACHE_TIMEOUT)
         return locations if locations else []
-
+    
+    def get_age_distribution(self):
+        return self.repository.count_cases_by_age_group()
 
 class CacheService(CacheInterface):
     def get(self, key):
