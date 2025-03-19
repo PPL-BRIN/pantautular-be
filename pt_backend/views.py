@@ -92,7 +92,7 @@ class CaseAgeDistributionView(APIView):
 
         try:
             age_distribution = service.get_age_distribution()
-
-            return Response(age_distribution, status=status.HTTP_200_OK)
+            serialized_data = AgeDistributionSerializer(age_distribution).data
+            return Response(serialized_data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
