@@ -37,3 +37,11 @@ class NewsRepository:
 class CaseRepository(CaseRepositoryInterface):
     def get_all_locations(self):
         return Case.get_all_locations()
+
+    def count_cases_by_age_group(self):
+        return {
+            "under_12": Case.objects.filter(age__lt=12).count(),
+            "age_12_25": Case.objects.filter(age__gte=12, age__lte=25).count(),
+            "age_26_45": Case.objects.filter(age__gte=26, age__lte=45).count(),
+            "above_45": Case.objects.filter(age__gt=45).count(),
+        }
