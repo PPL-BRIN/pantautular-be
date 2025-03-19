@@ -17,11 +17,45 @@ class DiseaseRepository:
     def get_disease_severity_stats(self):
         try:
             diseases = Disease.objects.prefetch_related('cases')
+            
             result = []
+            for disease in diseases:
+                # Initialize the disease info with only what's needed
+                disease_info = {
+                    "name": disease.name,
+                    "severity_counts": {    
+                        "hospitalisasi": 0,
+                        "insiden": 0,
+                        "mortalitas": 0
+                    },
+                    "total_cases": 0 
+                }
+                
+                severity_counts = disease.cases.values('severity').annotate(count=Count('id'))
+                
+                # Fill in the counts and calculate total
+                for item in severity_counts:
+                    severity = item['severity'].lower()  # Normalize to lowercase
+                    count = item['count']
+                    
+                    # Map any variations to standard keys
+                    if severity == "insiden":
+                        disease_info["severity_counts"]["insiden"] += count
+                    elif severity == "hospitalisasi":
+                        disease_info["severity_counts"]["hospitalisasi"] += count
+                    elif severity == "mortalitas":
+                        disease_info["severity_counts"]["mortalitas"] += count
+                    
+                    # Add to total regardless of severity type
+                    disease_info["total_cases"] += count
+                
+                result.append(disease_info)
+                
             return result
         except Exception as e:
             print(f"Repository ERROR: {str(e)}")
             return {"error": "Error retrieving disease severity statistics"}
+
 
 class LocationRepository:
     def get_all_locations_name(self):
