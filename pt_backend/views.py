@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import CaseLocationSerializer
+from .serializers import AgeDistributionSerializer, CaseLocationSerializer
 from .services import CacheService, CaseService
 from .filter.service import CaseFilterService
 from .repositories import CaseRepository, DiseaseRepository, LocationRepository, NewsRepository
@@ -77,5 +77,22 @@ class FiltersView(APIView):
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class CaseAgeDistributionView(APIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = []
+
+    def get(self, request):
+        repository = CaseRepository()
+        cache_service = CacheService()
+        service = CaseService(repository, cache_service)
+
+        try:
+            age_distribution = service.get_age_distribution()
+
+            return Response(age_distribution, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
