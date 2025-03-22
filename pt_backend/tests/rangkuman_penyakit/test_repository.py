@@ -85,33 +85,64 @@ class DiseaseRepositoryTestCase(TestCase):
         # Check we got results for both diseases
         self.assertEqual(len(results), 2)
         
-        # Find each disease in results
-        disease1_result = next((r for r in results if r["name"] == "Test Disease 1"), None)
-        disease2_result = next((r for r in results if r["name"] == "Test Disease 2"), None)
+        # First result should be the disease with most cases (disease1 with 3 cases)
+        self.assertEqual(results[0]["name"], "Test Disease 1")
+        self.assertEqual(results[0]["total_cases"], 3)
         
-        # Check disease1 stats
-        self.assertIsNotNone(disease1_result)
-        self.assertEqual(disease1_result["total_cases"], 3)
-        self.assertEqual(disease1_result["severity_counts"]["hospitalisasi"], 1)
-        self.assertEqual(disease1_result["severity_counts"]["insiden"], 1)  # Capitalized "Insiden" normalized
-        self.assertEqual(disease1_result["severity_counts"]["mortalitas"], 1)
+        # Second result should be disease2 with 1 case
+        self.assertEqual(results[1]["name"], "Test Disease 2")
+        self.assertEqual(results[1]["total_cases"], 1)
         
-        # Check disease2 stats
-        self.assertIsNotNone(disease2_result)
-        self.assertEqual(disease2_result["total_cases"], 1)
-        self.assertEqual(disease2_result["severity_counts"]["hospitalisasi"], 1)
-        self.assertEqual(disease2_result["severity_counts"]["insiden"], 0)
-        self.assertEqual(disease2_result["severity_counts"]["mortalitas"], 0)
+        # Check detailed counts for disease1
+        self.assertEqual(results[0]["severity_counts"]["hospitalisasi"], 1)
+        self.assertEqual(results[0]["severity_counts"]["insiden"], 1)
+        self.assertEqual(results[0]["severity_counts"]["mortalitas"], 1)
+        
+        # Check detailed counts for disease2
+        self.assertEqual(results[1]["severity_counts"]["hospitalisasi"], 1)
+        self.assertEqual(results[1]["severity_counts"]["insiden"], 0)
+        self.assertEqual(results[1]["severity_counts"]["mortalitas"], 0)
+
+    def test_get_disease_severity_stats_limit(self):
+        """Test that only top 12 diseases are returned"""
+        # Create 15 more diseases with 1 case each
+        for i in range(15):
+            disease = Disease.objects.create(
+                id=uuid.uuid4(),
+                name=f"Extra Disease {i}",
+                level_of_alertness=1
+            )
+            
+            Case.objects.create(
+                id=uuid.uuid4(),
+                gender="male",
+                age=30,
+                city="Test City",
+                status="minimal",
+                severity="hospitalisasi",
+                disease=disease,
+                location=self.location1
+            )
+        
+        # We should now have 17 diseases total (2 original + 15 new)
+        results = self.repository.get_disease_severity_stats()
+        
+        # Check that only 12 are returned
+        self.assertEqual(len(results), 12)
+        
+        # First result should still be disease1 with 3 cases
+        self.assertEqual(results[0]["name"], "Test Disease 1")
+        self.assertEqual(results[0]["total_cases"], 3)
 
     def test_get_disease_severity_stats_error_handling(self):
         """Test error handling in the repository method"""
-        # Patch Disease.objects.prefetch_related to raise an exception
-        with patch('pt_backend.models.Disease.objects.prefetch_related', 
+        # Update patch to match new implementation - patch annotate instead of prefetch_related
+        with patch('django.db.models.query.QuerySet.annotate', 
                 side_effect=Exception("Test exception")):
             result = self.repository.get_disease_severity_stats()
             
             # Check that we get an error dict back
             self.assertIsNotNone(result)
-            self.assertIsInstance(result, dict)
+            self.assertIsInstance(result, dict)  # Should be a dict, not a list
             self.assertIn("error", result)
             self.assertEqual(result["error"], "Error retrieving disease severity statistics")
