@@ -1,7 +1,7 @@
 from .models import Case, Disease, Location, News
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Count, Case as DjangoCase, When, IntegerField, Sum
 from django.db.models import Count
-from .models import Case
 from .interfaces import CaseRepositoryInterface
 
 class DiseaseRepository:
@@ -16,39 +16,46 @@ class DiseaseRepository:
     
     def get_disease_severity_stats(self):
         try:
-            diseases = Disease.objects.prefetch_related('cases')
+            # Single efficient query with annotations
+            from django.db.models import Count, Case as DjangoCase, When, IntegerField, Sum
             
+            diseases = Disease.objects.annotate(
+                hospitalisasi_count=Sum(
+                    DjangoCase(
+                        When(cases__severity__iexact='hospitalisasi', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                insiden_count=Sum(
+                    DjangoCase(
+                        When(cases__severity__iexact='insiden', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                mortalitas_count=Sum(
+                    DjangoCase(
+                        When(cases__severity__iexact='mortalitas', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                total_cases=Count('cases')
+            ).order_by('-total_cases')[:12]
+            
+            # Format the response
             result = []
             for disease in diseases:
-                # Initialize the disease info with only what's needed
                 disease_info = {
                     "name": disease.name,
-                    "severity_counts": {    
-                        "hospitalisasi": 0,
-                        "insiden": 0,
-                        "mortalitas": 0
+                    "severity_counts": {
+                        "hospitalisasi": disease.hospitalisasi_count or 0,
+                        "insiden": disease.insiden_count or 0,
+                        "mortalitas": disease.mortalitas_count or 0
                     },
-                    "total_cases": 0 
+                    "total_cases": disease.total_cases or 0
                 }
-                
-                severity_counts = disease.cases.values('severity').annotate(count=Count('id'))
-                
-                # Fill in the counts and calculate total
-                for item in severity_counts:
-                    severity = item['severity'].lower()  # Normalize to lowercase
-                    count = item['count']
-                    
-                    # Map any variations to standard keys
-                    if severity == "insiden":
-                        disease_info["severity_counts"]["insiden"] += count
-                    elif severity == "hospitalisasi":
-                        disease_info["severity_counts"]["hospitalisasi"] += count
-                    elif severity == "mortalitas":
-                        disease_info["severity_counts"]["mortalitas"] += count
-                    
-                    # Add to total regardless of severity type
-                    disease_info["total_cases"] += count
-                
                 result.append(disease_info)
                 
             return result
