@@ -156,13 +156,13 @@ class CaseRepositoryTestCase(TestCase):
 
     def test_count_cases_by_age_group_edge_case(self):
         # Test jika ada kasus di batas-batas usia (misalnya usia 12, 25, 45)
-        case_12 = Case.objects.create(
+        Case.objects.create(
             id=uuid.uuid4(), gender="Female", age=12, city="Bandung", status="terjangkit", disease=self.disease, location=self.location
         )
-        case_25 = Case.objects.create(
+        Case.objects.create(
             id=uuid.uuid4(), gender="Male", age=25, city="Bandung", status="terjangkit", disease=self.disease, location=self.location
         )
-        case_45 = Case.objects.create(
+        Case.objects.create(
             id=uuid.uuid4(), gender="Female", age=45, city="Bandung", status="terjangkit", disease=self.disease, location=self.location
         )
 
