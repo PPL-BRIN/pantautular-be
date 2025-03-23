@@ -50,6 +50,25 @@ class NewsRepository:
         except ObjectDoesNotExist:
             return {"error": "Error retrieving national portals"}
     
+    def get_national_portal_statistics(self):
+        try:
+            # Get portals with news count and distinct disease count            
+            portal_stats = News.objects.filter(
+                type="Nasional"
+            ).values(
+                'portal'
+            ).annotate(
+                news_count=Count('id'),
+                disease_count=Count('case__disease', distinct=True)
+            ).order_by('-news_count')
+            
+            if not portal_stats.exists():
+                return []
+                
+            return portal_stats
+        except ObjectDoesNotExist:
+            return {"error": "Error retrieving national portal statistics"}
+
 class CaseRepository(CaseRepositoryInterface):
     def get_all_locations(self):
         return Case.get_all_locations()
