@@ -1,5 +1,6 @@
 from .models import Case, Disease, Location, News
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Count
 from .models import Case
 from .interfaces import CaseRepositoryInterface
 
@@ -33,7 +34,22 @@ class NewsRepository:
             return list(news)
         except ObjectDoesNotExist:
             return {"error": "Error retrieving news"}
-
+        
+    def get_top_five_national_portals(self):
+        try:
+            portals = News.objects.filter(
+                type="Nasional"
+            ).values('portal').annotate(
+                count=Count('id')
+            ).order_by('-count', 'portal')[:5]
+            
+            if not portals.exists():
+                return []
+                
+            return portals
+        except ObjectDoesNotExist:
+            return {"error": "Error retrieving national portals"}
+    
 class CaseRepository(CaseRepositoryInterface):
     def get_all_locations(self):
         return Case.get_all_locations()
