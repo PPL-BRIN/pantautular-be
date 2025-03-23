@@ -63,7 +63,6 @@ class DiseaseRepository:
             print(f"Repository ERROR: {str(e)}")
             return {"error": "Error retrieving disease severity statistics"}
 
-
 class LocationRepository:
     def get_all_locations_name(self):
         try:
@@ -73,6 +72,13 @@ class LocationRepository:
             return list(locations)
         except ObjectDoesNotExist:
             return {"error": "Error retrieving locations"}
+    
+    def get_location_severity_stats(self):
+        try:
+            provinces = Case.objects.values('location__province')
+        except Exception as e:
+            print(f"Repository ERROR: {str(e)}")
+            return {"error": f"Error retrieving province severity statistics: {str(e)}"}
         
 class NewsRepository:
     def get_all_news_name(self):
