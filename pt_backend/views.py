@@ -121,8 +121,16 @@ class LocationSeverityStatsView(APIView):
     
     def get(self, request):
         try:
-            pass
-          
+            stats = self.service.get_location_severity_stats()
+            
+            if isinstance(stats, dict) and "error" in stats:
+                return Response(stats, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            serialized_data = self.serializer_class(stats, many=True).data
+            return Response({
+                "data": serialized_data
+            }, status=status.HTTP_200_OK)
+            
         except Exception as e:
             print(f"VIEW ERROR: {str(e)}")
             return Response(
