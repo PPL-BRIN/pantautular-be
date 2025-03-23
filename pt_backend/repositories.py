@@ -1,7 +1,6 @@
 from .models import Case, Disease, Location, News
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, Case as DjangoCase, When, IntegerField, Sum
-from django.db.models import Count
+from django.db.models import Count,  Case as DjangoCase, When, IntegerField, Sum, F
 from .interfaces import CaseRepositoryInterface
 
 class DiseaseRepository:
@@ -16,9 +15,6 @@ class DiseaseRepository:
     
     def get_disease_severity_stats(self):
         try:
-            # Single efficient query with annotations
-            from django.db.models import Count, Case as DjangoCase, When, IntegerField, Sum
-            
             diseases = Disease.objects.annotate(
                 hospitalisasi_count=Sum(
                     DjangoCase(
@@ -75,7 +71,47 @@ class LocationRepository:
     
     def get_location_severity_stats(self):
         try:
-            provinces = Case.objects.values('location__province')
+            provinces = Case.objects.values('location__province').annotate(
+                name=F('location__province'),  # Alias for consistent serialization
+                hospitalisasi_count=Sum(
+                    DjangoCase(
+                        When(severity__iexact='hospitalisasi', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                insiden_count=Sum(
+                    DjangoCase(
+                        When(severity__iexact='insiden', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                mortalitas_count=Sum(
+                    DjangoCase(
+                        When(severity__iexact='mortalitas', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                total_cases=Count('id')
+            ).order_by('-total_cases')[:12]
+            
+            # Format the response
+            result = []
+            for province in provinces:
+                province_info = {
+                    "name": province['name'],
+                    "severity_counts": {
+                        "hospitalisasi": province['hospitalisasi_count'] or 0,
+                        "insiden": province['insiden_count'] or 0,
+                        "mortalitas": province['mortalitas_count'] or 0
+                    },
+                    "total_cases": province['total_cases'] or 0
+                }
+                result.append(province_info)
+                
+            return result
         except Exception as e:
             print(f"Repository ERROR: {str(e)}")
             return {"error": f"Error retrieving province severity statistics: {str(e)}"}
