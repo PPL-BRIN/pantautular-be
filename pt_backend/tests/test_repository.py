@@ -98,6 +98,130 @@ class NewsRepositoryTestCase(BaseTestCase):
         result = self.repository.get_all_news_name()
         self.assertEqual(result, {"error": "Error retrieving news"})
 
+
+class NewsRepositoryTopNationalPortalsTestCase(TestCase):
+    def setUp(self):
+        self.repository = NewsRepository()
+        
+        self.disease = Disease.objects.create(name="COVID-19", level_of_alertness=5)
+        self.location = Location.objects.create(
+            latitude=-6.9175, longitude=107.6191, city="Bandung"
+        )
+        self.case = Case.objects.create(
+            id=uuid.uuid4(), gender="Pria", age=30, city="Jakarta", status="kematian", disease=self.disease, location=self.location
+        )
+
+        # Create 6 news objects
+        self.news_national = [
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="kompas.com",
+                type="Nasional",
+                title="News 1",
+                content="Content 1",
+                url="https://kompas.com/1",
+                author="Author 1",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="detik.com",
+                type="Nasional",
+                title="News 2",
+                content="Content 2",
+                url="https://detik.com/1",
+                author="Author 2",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="cnn.com",
+                type="Nasional",
+                title="News 3",
+                content="Content 3",
+                url="https://cnn.com/1",
+                author="Author 3",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="tempo.co",
+                type="Nasional",
+                title="News 4",
+                content="Content 4",
+                url="https://tempo.co/1",
+                author="Author 4",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="republika.co.id",
+                type="Nasional",
+                title="News 5",
+                content="Content 5",
+                url="https://republika.co.id/1",
+                author="Author 5",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="tribun.com",
+                type="Nasional",
+                title="News 6",
+                content="Content 6",
+                url="https://tribun.com/1",
+                author="Author 6",
+                case=self.case
+            )
+        ]
+
+    def test_get_top_five_national_portals(self):
+        top_portals = self.repository.get_top_five_national_portals()
+        self.assertEqual(top_portals.count(), 5)
+
+        portals = [item["portal"] for item in top_portals]
+        self.assertEqual(len(portals), 5)
+
+        for portal in top_portals:
+            self.assertEqual(portal["count"], 1)
+
+        self.assertNotIn("tribun.com", portals)
+
+    def test_get_top_five_national_portals_empty(self):
+        News.objects.all().delete()
+
+        top_portals = self.repository.get_top_five_national_portals()
+        self.assertEqual(top_portals, [])
+
+    def test_get_top_five_national_portals_less_than_five(self):
+        News.objects.filter(portal="tribun.com").delete()
+        News.objects.filter(portal="republika.co.id").delete()
+
+        top_portals = self.repository.get_top_five_national_portals()
+        self.assertEqual(top_portals.count(), 4)
+
+        portals = [item["portal"] for item in top_portals]
+        self.assertEqual(len(portals), 4)
+
+        for portal in top_portals:
+            self.assertEqual(portal["count"], 1)
+
+        self.assertNotIn("tribun.com", portals)
+        self.assertNotIn("replubika.co.id", portals)
+
+    @patch('pt_backend.models.News.objects.filter')
+    def test_get_top_five_national_portals_object_does_not_exist(self, mock_filter):
+        mock_filter.side_effect = ObjectDoesNotExist()
+        
+        result = self.repository.get_top_five_national_portals()
+        
+        self.assertEqual(
+            result, 
+            {"error": "Error retrieving national portals"}
+        )
+        
+        mock_filter.assert_called_once_with(type="Nasional")
+
 class CaseRepositoryTestCase(TestCase):
     def setUp(self):
         self.disease = Disease.objects.create(name="COVID-19", level_of_alertness=5)
