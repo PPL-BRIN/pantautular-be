@@ -26,3 +26,13 @@ class CacheService(CacheInterface):
 
     def delete(self, key):
         cache.delete(key)
+
+class NewsService:
+    def __init__(self, repository):
+        self.repository = repository
+
+    def get_top_national_portals(self):
+        try:
+            return self.repository.get_top_five_national_portals()
+        except Exception as e:
+            raise e
