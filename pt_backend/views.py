@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import CaseLocationSerializer, TopPortalSerializer
+from .serializers import CaseLocationSerializer, PortalStatisticsSerializer, TopPortalSerializer
 from .services import CacheService, CaseService, NewsService
 from .filter.service import CaseFilterService
 from .repositories import CaseRepository, DiseaseRepository, LocationRepository, NewsRepository
@@ -113,5 +113,40 @@ class TopNationalPortalsView(APIView):
         except Exception as e:
             return Response(
                 {"error": "An error occurred while fetching top portals"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+class NationalPortalStatisticsView(APIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = []
+    serializer_class = PortalStatisticsSerializer
+
+    def get(self, request):
+        try:
+            repository = NewsRepository()
+            service = NewsService(repository)
+            portal_stats = service.get_national_portal_statistics()
+            
+            # Check if we got an error response from repository
+            if isinstance(portal_stats, dict) and 'error' in portal_stats:
+                return Response(
+                    {"error": "An error occurred while fetching portal statistics"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Handle empty results
+            if not portal_stats:
+                return Response([], status=status.HTTP_200_OK)
+                
+            # Convert queryset to list if needed
+            if hasattr(portal_stats, 'values'):
+                portal_stats = list(portal_stats)
+                
+            serializer = self.serializer_class(portal_stats, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": "An error occurred while fetching portal statistics"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
