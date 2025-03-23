@@ -1,4 +1,4 @@
-from .repositories import DiseaseRepository
+from .repositories import DiseaseRepository, LocationRepository
 from .interfaces import CaseRetrievalInterface, CaseRepositoryInterface, CacheInterface
 from django.core.cache import cache
 
@@ -37,4 +37,11 @@ class DiseaseService:
         result = self.repository.get_disease_severity_stats()
         print(f"Service: Received result type: {type(result)}")
         return result
+
+class LocationService:
+    def __init__(self, repository=None):
+        self.repository = repository or LocationRepository()
+        
+    def get_location_severity_stats(self):
+        pass
         
