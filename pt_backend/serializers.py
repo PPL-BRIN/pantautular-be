@@ -15,3 +15,8 @@ class DiseaseSeverityStatsSerializer(serializers.Serializer):
     name = serializers.CharField()
     severity_counts = SeverityCountsSerializer()
     total_cases = serializers.IntegerField()
+
+class LocationSeverityStatsSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    severity_counts = SeverityCountsSerializer()
+    total_cases = serializers.IntegerField()

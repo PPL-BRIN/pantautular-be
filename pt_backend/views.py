@@ -1,7 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import CaseLocationSerializer, DiseaseSeverityStatsSerializer
+from .serializers import CaseLocationSerializer, DiseaseSeverityStatsSerializer, LocationSeverityStatsSerializer
+from .services import LocationService
 from .services import CacheService, CaseService, DiseaseService
 from .filter.service import CaseFilterService
 from .repositories import CaseRepository, DiseaseRepository, LocationRepository, NewsRepository
@@ -102,6 +103,28 @@ class DiseaseSeverityStatsView(APIView):
             
         except Exception as e:
             print(f"ERROR: {str(e)}")
+            return Response(
+                {"error": "An unexpected error occurred. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+class LocationSeverityStatsView(APIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = []
+    
+    serializer_class = LocationSeverityStatsSerializer
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        repository = LocationRepository()
+        self.service = LocationService(repository=repository)
+    
+    def get(self, request):
+        try:
+            pass
+          
+        except Exception as e:
+            print(f"VIEW ERROR: {str(e)}")
             return Response(
                 {"error": "An unexpected error occurred. Please try again later."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
