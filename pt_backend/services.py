@@ -43,5 +43,8 @@ class LocationService:
         self.repository = repository or LocationRepository()
         
     def get_location_severity_stats(self):
-        pass
+        print("Service: Fetching location severity stats")
+        result = self.repository.get_location_severity_stats()
+        print(f"Service: Received result type: {type(result)}")
+        return result
         
