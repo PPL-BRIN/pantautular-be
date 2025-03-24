@@ -107,7 +107,7 @@ class TopLocalPortalsView(APIView):
                 top_portals = list(top_portals)
                 
             serializer = self.serializer_class(top_portals, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({"local_top":serializer.data}, status=status.HTTP_200_OK)
             
         except Exception as e:
             return Response(
@@ -142,7 +142,7 @@ class LocalPortalStatisticsView(APIView):
                 portal_stats = list(portal_stats)
                 
             serializer = self.serializer_class(portal_stats, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({"local_stats":serializer.data}, status=status.HTTP_200_OK)
             
         except Exception:
             return Response(
