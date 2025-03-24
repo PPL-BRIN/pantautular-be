@@ -50,7 +50,7 @@ class AllCaseLocationsView(APIView):
                 self.serializer_class(cases, many=True).data,
                 status=status.HTTP_200_OK
             )
-        except Exception as e:
+        except Exception:
             return Response(
                 {"error": "An unexpected error occurred. Please try again later."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -145,7 +145,7 @@ class NationalPortalStatisticsView(APIView):
             serializer = self.serializer_class(portal_stats, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
-        except Exception as e:
+        except Exception:
             return Response(
                 {"error": "An error occurred while fetching portal statistics"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
