@@ -1,7 +1,7 @@
 from .models import Case, Disease, Location, News
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count
-from .interfaces import CaseRepositoryInterface
+from .interfaces import CaseRepositoryInterface, NewsRepositoryInterface
 
 class DiseaseRepository:
     def get_all_diseases_name(self):
@@ -24,7 +24,7 @@ class LocationRepository:
             return {"error": "Error retrieving locations"}
         
 
-class NewsRepository:
+class NewsRepository(NewsRepositoryInterface):
     def get_all_news_name(self):
         try:
             news = News.objects.values_list("portal", flat=True).distinct()

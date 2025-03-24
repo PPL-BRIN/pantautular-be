@@ -22,3 +22,12 @@ class CacheInterface(ABC):
     @abstractmethod
     def delete(self, key):
         pass # pragma: no cover
+
+class NewsRepositoryInterface(ABC):
+    @abstractmethod
+    def get_top_five_local_portals(self):
+        pass # pragma: no cover
+
+    @abstractmethod
+    def get_local_portal_statistics(self):
+        pass # pragma: no cover
