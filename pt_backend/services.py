@@ -1,3 +1,4 @@
+from pt_backend.repositories import NewsRepository
 from .interfaces import CaseRetrievalInterface, CaseRepositoryInterface, CacheInterface
 from django.core.cache import cache
 
@@ -26,3 +27,13 @@ class CacheService(CacheInterface):
 
     def delete(self, key):
         cache.delete(key)
+
+class NewsService:
+    def __init__(self, repository: NewsRepository):
+        self.repository = repository
+
+    def get_top_local_portals(self):
+        return self.repository.get_top_five_local_portals()
+
+    def get_local_portal_statistics(self):
+        return self.repository.get_local_portal_statistics()
