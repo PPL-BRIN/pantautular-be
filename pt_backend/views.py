@@ -8,6 +8,7 @@ from .filter.service import CaseFilterService
 from .repositories import CaseRepository, DiseaseRepository, LocationRepository, NewsRepository
 from .authentication import APIKeyAuthentication
 
+INTERNAL_SERVER_ERR_MSG = "An unexpected error occurred. Please try again later."
 
 class AllCaseLocationsView(APIView):
     authentication_classes = [APIKeyAuthentication]
@@ -30,8 +31,10 @@ class AllCaseLocationsView(APIView):
             serialized_data = self.serializer_class(cases, many=True).data
             return Response(serialized_data, status=status.HTTP_200_OK)
         except Exception as e:
-            print(e)
-            return Response({"error": "An unexpected error occurred. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": INTERNAL_SERVER_ERR_MSG}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request):
         try:
@@ -53,7 +56,7 @@ class AllCaseLocationsView(APIView):
             )
         except Exception as e:
             return Response(
-                {"error": "An unexpected error occurred. Please try again later."},
+                {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -104,7 +107,7 @@ class DiseaseSeverityStatsView(APIView):
         except Exception as e:
             print(f"ERROR: {str(e)}")
             return Response(
-                {"error": "An unexpected error occurred. Please try again later."},
+                {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
@@ -134,6 +137,6 @@ class LocationSeverityStatsView(APIView):
         except Exception as e:
             print(f"VIEW ERROR: {str(e)}")
             return Response(
-                {"error": "An unexpected error occurred. Please try again later."},
+                {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
