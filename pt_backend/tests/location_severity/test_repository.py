@@ -136,3 +136,74 @@ def test_get_location_severity_stats_error_handling(self):
         self.assertIsInstance(result, dict)
         self.assertIn("error", result)
         self.assertTrue(result["error"].startswith("Error retrieving location severity statistics"))
+
+def test_get_city_severity_stats(self):
+    """Test retrieving location stats by city"""
+    results = self.repository.get_city_severity_stats()
+    
+    # Check we got results for all cities in the test data
+    self.assertEqual(len(results), 3)
+    
+    # First result should be Jakarta Pusat with most cases (3 cases)
+    self.assertEqual(results[0]["name"], "Jakarta Pusat")
+    self.assertEqual(results[0]["total_cases"], 3)
+    
+    # Second result should be Bandung with 1 case
+    self.assertEqual(results[1]["name"], "Bandung")
+    self.assertEqual(results[1]["total_cases"], 1)
+    
+    # Surabaya should have 0 cases (no cases created for Surabaya in setUp)
+    self.assertEqual(results[2]["name"], "Surabaya")
+    self.assertEqual(results[2]["total_cases"], 0)
+    
+    # Check detailed counts for Jakarta Pusat
+    self.assertEqual(results[0]["severity_counts"]["hospitalisasi"], 1)
+    self.assertEqual(results[0]["severity_counts"]["insiden"], 1)
+    self.assertEqual(results[0]["severity_counts"]["mortalitas"], 1)
+    
+    # Check detailed counts for Bandung
+    self.assertEqual(results[1]["severity_counts"]["hospitalisasi"], 1)
+    self.assertEqual(results[1]["severity_counts"]["insiden"], 0)
+    self.assertEqual(results[1]["severity_counts"]["mortalitas"], 0)
+
+def test_get_city_severity_stats_limit(self):
+    """Test that only top 12 cities are returned"""
+    # Create 15 more locations and cases to test the limit
+    for i in range(15):
+        new_location = Location.objects.create(
+            id=uuid.uuid4(),
+            latitude=float(i),
+            longitude=float(i),
+            city=f"Test City {i}",
+            province="Test Province"
+        )
+        Case.objects.create(
+            id=uuid.uuid4(),
+            gender="male",
+            age=30,
+            city=f"Test City {i}",
+            status="minimal",
+            severity="hospitalisasi",
+            disease=self.disease1,
+            location=new_location
+        )
+    
+    results = self.repository.get_city_severity_stats()
+    
+    # Check that only 12 are returned
+    self.assertEqual(len(results), 12)
+    
+    # First result should still be Jakarta Pusat with 3 cases
+    self.assertEqual(results[0]["name"], "Jakarta Pusat")
+    self.assertEqual(results[0]["total_cases"], 3)
+
+def test_get_city_severity_stats_error_handling(self):
+    """Test error handling in the repository method"""
+    with patch('django.db.models.query.QuerySet.values', 
+            side_effect=Exception("Test exception")):
+        result = self.repository.get_city_severity_stats()
+        
+        # Check that we get an error dict back
+        self.assertIsInstance(result, dict)
+        self.assertIn("error", result)
+        self.assertTrue(result["error"].startswith("Error retrieving city severity"))

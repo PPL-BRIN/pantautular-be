@@ -113,7 +113,14 @@ class LocationRepository:
             return result
         except Exception as e:
             return {"error": f"Error retrieving province severity statistics: {str(e)}"}
-        
+    
+    def get_city_severity_stats(self):
+            """Get severity statistics for the top 12 cities with most cases"""
+            try:
+                cities = Case.objects.values('location__city')
+            except Exception as e:
+                return {"error": f"Error retrieving city severity statistics: {str(e)}"}
+
 class NewsRepository:
     def get_all_news_name(self):
         try:
