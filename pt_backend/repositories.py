@@ -1,7 +1,6 @@
 from .models import Case, Disease, Location, News
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count, Case as DjangoCase, When, IntegerField, Sum
-from django.db.models import Count
 from .interfaces import CaseRepositoryInterface
 
 class DiseaseRepository:
@@ -16,9 +15,6 @@ class DiseaseRepository:
     
     def get_disease_severity_stats(self):
         try:
-            # Single efficient query with annotations
-            from django.db.models import Count, Case as DjangoCase, When, IntegerField, Sum
-            
             diseases = Disease.objects.annotate(
                 hospitalisasi_count=Sum(
                     DjangoCase(
@@ -60,7 +56,6 @@ class DiseaseRepository:
                 
             return result
         except Exception as e:
-            print(f"Repository ERROR: {str(e)}")
             return {"error": "Error retrieving disease severity statistics"}
 
 

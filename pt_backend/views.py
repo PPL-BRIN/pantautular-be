@@ -7,7 +7,6 @@ from .filter.service import CaseFilterService
 from .repositories import CaseRepository, DiseaseRepository, LocationRepository, NewsRepository
 from .authentication import APIKeyAuthentication
 
-
 class AllCaseLocationsView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = []
@@ -29,7 +28,6 @@ class AllCaseLocationsView(APIView):
             serialized_data = self.serializer_class(cases, many=True).data
             return Response(serialized_data, status=status.HTTP_200_OK)
         except Exception as e:
-            print(e)
             return Response({"error": "An unexpected error occurred. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
@@ -101,7 +99,6 @@ class DiseaseSeverityStatsView(APIView):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
-            print(f"ERROR: {str(e)}")
             return Response(
                 {"error": "An unexpected error occurred. Please try again later."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
