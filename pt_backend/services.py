@@ -32,13 +32,7 @@ class NewsService:
         self.repository = repository
 
     def get_top_national_portals(self):
-        try:
-            return self.repository.get_top_five_national_portals()
-        except Exception as e:
-            raise e
+        return self.repository.get_top_five_national_portals()
         
     def get_national_portal_statistics(self):
-        try:
-            return self.repository.get_national_portal_statistics()
-        except Exception as e:
-            raise e
+        return self.repository.get_national_portal_statistics()
