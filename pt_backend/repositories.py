@@ -117,7 +117,47 @@ class LocationRepository:
     def get_city_severity_stats(self):
             """Get severity statistics for the top 12 cities with most cases"""
             try:
-                cities = Case.objects.values('location__city')
+                cities = Case.objects.values('location__city').annotate(
+                    name=F('location__city'),  # Alias for consistent serialization
+                    hospitalisasi_count=Sum(
+                        DjangoCase(
+                            When(severity__iexact='hospitalisasi', then=1),
+                            default=0,
+                            output_field=IntegerField()
+                        )
+                    ),
+                    insiden_count=Sum(
+                        DjangoCase(
+                            When(severity__iexact='insiden', then=1),
+                            default=0,
+                            output_field=IntegerField()
+                        )
+                    ),
+                    mortalitas_count=Sum(
+                        DjangoCase(
+                            When(severity__iexact='mortalitas', then=1),
+                            default=0,
+                            output_field=IntegerField()
+                        )
+                    ),
+                    total_cases=Count('id')
+                ).order_by('-total_cases')[:12]
+                
+                # Format the response
+                result = []
+                for city in cities:
+                    city_info = {
+                        "name": city['name'],
+                        "severity_counts": {
+                            "hospitalisasi": city['hospitalisasi_count'] or 0,
+                            "insiden": city['insiden_count'] or 0,
+                            "mortalitas": city['mortalitas_count'] or 0
+                        },
+                        "total_cases": city['total_cases'] or 0
+                    }
+                    result.append(city_info)
+                
+                return result
             except Exception as e:
                 return {"error": f"Error retrieving city severity statistics: {str(e)}"}
 
