@@ -21,7 +21,7 @@ class LocationSeverityStatsViewTestCase(TestCase):
         mock_service_class.return_value = mock_service_instance
         
         # Setup mock service response
-        mock_service_instance.get_location_severity_stats.return_value = [
+        mock_service_instance.get_province_severity_stats.return_value = [
             {
                 "name": "DKI Jakarta",
                 "severity_counts": {
@@ -43,7 +43,7 @@ class LocationSeverityStatsViewTestCase(TestCase):
         ]
         
         # Make request (province only now)
-        request = self.factory.get('/api/locations/severity-stats/')
+        request = self.factory.get('/api/locations/province/severity-stats/')
         response = self.view(request)
         
         # Verify response
@@ -59,7 +59,7 @@ class LocationSeverityStatsViewTestCase(TestCase):
         self.assertEqual(province1['severity_counts']['mortalitas'], 2)
         
         # Verify service was called without parameters
-        mock_service_instance.get_location_severity_stats.assert_called_once_with()
+        mock_service_instance.get_province_severity_stats.assert_called_once_with()
     
     @patch('pt_backend.views.LocationService')
     @patch('pt_backend.authentication.APIKeyAuthentication.authenticate')
@@ -71,12 +71,12 @@ class LocationSeverityStatsViewTestCase(TestCase):
         # Setup mock service to return error
         mock_service_instance = MagicMock()
         mock_service_class.return_value = mock_service_instance
-        mock_service_instance.get_location_severity_stats.return_value = {
+        mock_service_instance.get_province_severity_stats.return_value = {
             "error": "Test service error"
         }
         
         # Make request
-        request = self.factory.get('/api/locations/severity-stats/')
+        request = self.factory.get('/api/locations/province/severity-stats/')
         response = self.view(request)
         
         # Verify error response
@@ -94,10 +94,10 @@ class LocationSeverityStatsViewTestCase(TestCase):
         # Setup mock service to raise exception
         mock_service_instance = MagicMock()
         mock_service_class.return_value = mock_service_instance
-        mock_service_instance.get_location_severity_stats.side_effect = Exception("Unexpected test error")
+        mock_service_instance.get_province_severity_stats.side_effect = Exception("Unexpected test error")
         
         # Make request
-        request = self.factory.get('/api/locations/severity-stats/')
+        request = self.factory.get('/api/locations/province/severity-stats/')
         response = self.view(request)
         
         # Verify error response

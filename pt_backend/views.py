@@ -54,7 +54,7 @@ class AllCaseLocationsView(APIView):
                 self.serializer_class(cases, many=True).data,
                 status=status.HTTP_200_OK
             )
-        except Exception as e:
+        except Exception:
             return Response(
                 {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -105,7 +105,6 @@ class DiseaseSeverityStatsView(APIView):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
-            print(f"ERROR: {str(e)}")
             return Response(
                 {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -124,7 +123,7 @@ class LocationSeverityStatsView(APIView):
     
     def get(self, request):
         try:
-            stats = self.service.get_location_severity_stats()
+            stats = self.service.get_province_severity_stats()
             
             if isinstance(stats, dict) and "error" in stats:
                 return Response(stats, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -135,7 +134,6 @@ class LocationSeverityStatsView(APIView):
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
-            print(f"VIEW ERROR: {str(e)}")
             return Response(
                 {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -53,10 +53,9 @@ class DiseaseRepository:
                     "total_cases": disease.total_cases or 0
                 }
                 result.append(disease_info)
-                
             return result
-        except Exception as e:
-            print(f"Repository ERROR: {str(e)}")
+        
+        except Exception:
             return {"error": "Error retrieving disease severity statistics"}
 
 class LocationRepository:
@@ -69,7 +68,7 @@ class LocationRepository:
         except ObjectDoesNotExist:
             return {"error": "Error retrieving locations"}
     
-    def get_location_severity_stats(self):
+    def get_province_severity_stats(self):
         try:
             provinces = Case.objects.values('location__province').annotate(
                 name=F('location__province'),  # Alias for consistent serialization
@@ -113,7 +112,6 @@ class LocationRepository:
                 
             return result
         except Exception as e:
-            print(f"Repository ERROR: {str(e)}")
             return {"error": f"Error retrieving province severity statistics: {str(e)}"}
         
 class NewsRepository:

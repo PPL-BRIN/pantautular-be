@@ -3,7 +3,6 @@ from pt_backend.models import Disease, Case, Location
 from pt_backend.repositories import LocationRepository
 import uuid
 from unittest.mock import patch
-from django.db.models import Count
 
 class LocationRepositoryTestCase(TestCase):
     def setUp(self):
@@ -91,7 +90,7 @@ class LocationRepositoryTestCase(TestCase):
     # Updated test methods only (keep the setUp method as is)
 def test_get_location_severity_stats(self):
     """Test retrieving location stats by province"""
-    results = self.repository.get_location_severity_stats()
+    results = self.repository.get_province_severity_stats()
     
     # Check we got results for both provinces
     self.assertEqual(len(results), 2)
@@ -116,11 +115,9 @@ def test_get_location_severity_stats(self):
 
 def test_get_location_severity_stats_limit(self):
     """Test that only top 12 locations are returned"""
-    # Create 15 more locations and cases
-    # (keep the existing implementation)
     
     # Now we should have 17 locations total
-    results = self.repository.get_location_severity_stats()
+    results = self.repository.get_province_severity_stats()
     
     # Check that only 12 are returned
     self.assertEqual(len(results), 12)
@@ -133,7 +130,7 @@ def test_get_location_severity_stats_error_handling(self):
     """Test error handling in the repository method"""
     with patch('django.db.models.query.QuerySet.values', 
             side_effect=Exception("Test exception")):
-        result = self.repository.get_location_severity_stats()
+        result = self.repository.get_province_severity_stats()
         
         # Check that we get an error dict back
         self.assertIsInstance(result, dict)

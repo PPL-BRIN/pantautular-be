@@ -42,9 +42,7 @@ class LocationService:
     def __init__(self, repository=None):
         self.repository = repository or LocationRepository()
         
-    def get_location_severity_stats(self):
-        print("Service: Fetching location severity stats")
-        result = self.repository.get_location_severity_stats()
-        print(f"Service: Received result type: {type(result)}")
+    def get_province_severity_stats(self):
+        result = self.repository.get_province_severity_stats()
         return result
         
