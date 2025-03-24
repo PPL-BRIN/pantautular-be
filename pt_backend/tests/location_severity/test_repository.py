@@ -116,7 +116,7 @@ class LocationRepositoryTestCase(TestCase):
 
     def test_get_location_severity_stats_limit(self):
             """Test that only top 12 locations are returned"""
-            self.disease2, locations, _ = generate_test_data(
+            self.disease2, _, _ = generate_test_data(
                 num_provinces=15,  # Creates 15 provinces
                 cities_per_province=1,  # Just need 1 city per province to test province stats
                 cases_per_city=5,  # 5 cases per city should be enough
