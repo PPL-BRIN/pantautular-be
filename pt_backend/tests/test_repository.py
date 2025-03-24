@@ -113,6 +113,29 @@ class CaseRepositoryTestCase(TestCase):
             disease=self.disease,
             location=self.location
         )
+        self.repository = CaseRepository()
+
+    def test_get_all_case_locations(self):
+        locations = self.repository.get_all_locations()
+        self.assertTrue(locations.exists())
+        self.assertEqual(locations.count(), 1)
+        case_data = locations.first()
+        self.assertEqual(str(case_data["id"]), str(self.case.id))
+        self.assertEqual(float(case_data["location__latitude"]), -6.9175)
+        self.assertEqual(float(case_data["location__longitude"]), 107.6191)
+        self.assertEqual(case_data["city"], "Bandung")
+
+    def test_get_all_case_locations_empty(self):
+        Case.objects.all().delete()
+        locations = self.repository.get_all_locations()
+        self.assertFalse(locations.exists())
+
+class CaseRepositoryAgeDistributionTestCase(TestCase):
+    def setUp(self):
+        self.disease = Disease.objects.create(name="COVID-19", level_of_alertness=5)
+        self.location = Location.objects.create(
+            latitude=-6.9175, longitude=107.6191, city="Bandung"
+        )
 
         # Menambahkan berbagai umur untuk menguji distribusi usia
         self.case_under_12 = Case.objects.create(
@@ -130,24 +153,9 @@ class CaseRepositoryTestCase(TestCase):
 
         self.repository = CaseRepository()
 
-    def test_get_all_case_locations(self):
-        locations = self.repository.get_all_locations()
-        self.assertTrue(locations.exists())
-        self.assertEqual(locations.count(), 5)
-        case_data = locations.filter(id=str(self.case.id)).first()
-        self.assertEqual(str(case_data["id"]), str(self.case.id))
-        self.assertEqual(float(case_data["location__latitude"]), -6.9175)
-        self.assertEqual(float(case_data["location__longitude"]), 107.6191)
-        self.assertEqual(case_data["city"], "Bandung")
-
-    def test_get_all_case_locations_empty(self):
-        Case.objects.all().delete()
-        locations = self.repository.get_all_locations()
-        self.assertFalse(locations.exists())
-
     def test_count_cases_by_age_group(self):
         result = self.repository.count_cases_by_age_group()
-        self.assertEqual(result, {"under_12": 1, "age_12_25": 2, "age_26_45": 1, "above_45": 1})
+        self.assertEqual(result, {"under_12": 1, "age_12_25": 1, "age_26_45": 1, "above_45": 1})
 
     def test_count_cases_by_age_group_empty(self):
         Case.objects.all().delete()
@@ -169,7 +177,7 @@ class CaseRepositoryTestCase(TestCase):
         result = self.repository.count_cases_by_age_group()
         expected = {
             "under_12": 1,
-            "age_12_25": 4,
+            "age_12_25": 3,
             "age_26_45": 2,
             "above_45": 1,
         }
