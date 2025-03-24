@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from pt_backend.models import Case, Location, Disease
-from pt_backend.services import CacheService
+from pt_backend.services import CacheService, NewsService
 import uuid
 import os
 from unittest.mock import patch, Mock
@@ -132,3 +132,240 @@ class CaseFilterPostTest(TestCase):
         response = self.client.post('/cases/locations/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(), {"detail": "Invalid API Key"})
+
+
+
+class TopLocalPortalsViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.api_key = os.getenv("SECRET_API_KEY", "test-api-key")
+        self.client.credentials(HTTP_X_API_KEY=self.api_key)
+
+        # Setup mock repository and patch NewsService to use our mock
+        self.patcher = patch('pt_backend.views.NewsService')
+        self.mock_news_service = self.patcher.start()
+        self.mock_service_instance = Mock()
+        self.mock_news_service.return_value = self.mock_service_instance
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    def test_get_top_portals_success(self):
+        # Mock data that would come from repository (through service)
+        mock_data = [
+            {"portal": "kompas.com", "count": 10},
+            {"portal": "detik.com", "count": 8},
+            {"portal": "tempo.co", "count": 6},
+            {"portal": "cnn.com", "count": 4},
+            {"portal": "republika.co.id", "count": 2}
+        ]
+        self.mock_service_instance.get_top_local_portals.return_value = mock_data
+
+        # Make request
+        response = self.client.get('/api/dashboard/top-local-portals/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["local_top"], mock_data)
+        self.mock_service_instance.get_top_local_portals.assert_called_once()
+
+    def test_get_top_portals_empty_result(self):
+        # Mock empty result
+        self.mock_service_instance.get_top_local_portals.return_value = []
+
+        # Make request
+        response = self.client.get('/api/dashboard/top-local-portals/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
+    def test_get_top_portals_repository_error(self):
+        # Mock service error
+        self.mock_service_instance.get_top_local_portals.side_effect = Exception("Database error")
+
+        # Make request
+        response = self.client.get('/api/dashboard/top-local-portals/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.json(), {"error": "An error occurred while fetching top portals"})
+
+    def test_get_top_portals_error_response_from_repository(self):
+        """Test handling of error response object from repository"""
+        # Mock repository returning an error dictionary
+        error_response = {"error": "Error retrieving local portals"}
+        self.mock_service_instance.get_top_local_portals.return_value = error_response
+
+        # Make request
+        response = self.client.get('/api/dashboard/top-local-portals/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.json(), {"error": "An error occurred while fetching top portals"})
+
+    def test_get_top_portals_queryset_conversion(self):
+        """Test queryset conversion in view - covers views.py line 108"""
+        # Create a mock queryset-like object
+        class MockQuerySet:
+            def __init__(self, data):
+                self.data = data
+            def values(self):
+                return self.data
+            def __iter__(self):
+                return iter(self.data)
+            def __bool__(self):
+                return bool(self.data)
+
+        # Create mock data with queryset-like behavior
+        mock_data = MockQuerySet([
+            {"portal": "kompas.com", "count": 10},
+            {"portal": "detik.com", "count": 8}
+        ])
+
+        # Set return value with queryset-like object
+        self.mock_service_instance.get_top_local_portals.return_value = mock_data
+
+        # Make request
+        response = self.client.get('/api/dashboard/top-local-portals/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Verify the data was properly converted and serialized
+        self.assertTrue(isinstance(response.json()["local_top"], list))
+
+    def test_news_service_exception_propagation(self):
+        """Test service properly propagates exceptions to the view"""
+        # Stop the existing patcher temporarily
+        self.patcher.stop()
+
+        try:
+            # Test the actual NewsService class directly without mocking
+            mock_repository = Mock()
+            mock_repository.get_top_five_local_portals.side_effect = Exception("Repository error")
+
+            # Test if the service correctly re-raises the exception
+            with self.assertRaises(Exception):
+                service = NewsService(mock_repository)
+                service.get_top_local_portals()
+        finally:
+            # Restart the patcher for other tests
+            self.mock_news_service = self.patcher.start()
+            self.mock_service_instance = Mock()
+            self.mock_news_service.return_value = self.mock_service_instance
+
+class LocalPortalStatisticsViewTest(TestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.api_key = os.getenv("SECRET_API_KEY", "test-api-key")
+        self.client.credentials(HTTP_X_API_KEY=self.api_key)
+
+        # Setup mock repository and patch NewsService
+        self.patcher = patch('pt_backend.views.NewsService')
+        self.mock_news_service = self.patcher.start()
+        self.mock_service_instance = Mock()
+        self.mock_news_service.return_value = self.mock_service_instance
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    def test_get_portal_statistics_success(self):
+        # Mock data that would come from service
+        mock_data = [
+            {"portal": "kompas.com", "news_count": 15, "disease_count": 3},
+            {"portal": "detik.com", "news_count": 12, "disease_count": 2},
+            {"portal": "cnn.com", "news_count": 8, "disease_count": 4},
+            {"portal": "tempo.co", "news_count": 6, "disease_count": 1},
+            {"portal": "republika.co.id", "news_count": 5, "disease_count": 2}
+        ]
+        self.mock_service_instance.get_local_portal_statistics.return_value = mock_data
+        # Make request
+        response = self.client.get('/api/dashboard/local-portal-stats/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['local_stats'], mock_data)
+        self.mock_service_instance.get_local_portal_statistics.assert_called_once()
+
+    def test_get_portal_statistics_empty_result(self):
+        # Mock empty result
+        self.mock_service_instance.get_local_portal_statistics.return_value = []
+
+        # Make request
+        response = self.client.get('/api/dashboard/local-portal-stats/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
+    def test_get_portal_statistics_repository_error(self):
+        # Mock service error
+        self.mock_service_instance.get_local_portal_statistics.side_effect = Exception("Database error")
+
+        # Make request
+        response = self.client.get('/api/dashboard/local-portal-stats/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.json(), {"error": "An error occurred while fetching portal statistics"})
+
+    def test_get_portal_statistics_error_response_from_repository(self):
+        # Mock repository returning an error dictionary
+        error_response = {"error": "Error retrieving local portal statistics"}
+        self.mock_service_instance.get_local_portal_statistics.return_value = error_response
+
+        # Make request
+        response = self.client.get('/api/dashboard/local-portal-stats/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.json(), {"error": "An error occurred while fetching portal statistics"})
+
+    def test_get_portal_statistics_queryset_conversion(self):
+        # Create a mock queryset-like object
+        class MockQuerySet:
+            def __init__(self, data):
+                self.data = data
+            def values(self):
+                return self.data
+            def __iter__(self):
+                return iter(self.data)
+            def __bool__(self):
+                return bool(self.data)
+
+        # Create mock data with queryset-like behavior
+        mock_data = MockQuerySet([
+            {"portal": "kompas.com", "news_count": 15, "disease_count": 3},
+            {"portal": "detik.com", "news_count": 12, "disease_count": 2}
+        ])
+
+        # Set return value with queryset-like object
+        self.mock_service_instance.get_local_portal_statistics.return_value = mock_data
+
+        # Make request
+        response = self.client.get('/api/dashboard/local-portal-stats/')
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Verify the data was properly converted and serialized
+        self.assertTrue(isinstance(response.json(), dict))
+        self.assertEqual(len(response.json()['local_stats']), 2)
+
+    def test_service_propagates_exceptions(self):
+        # Stop the existing patcher temporarily
+        self.patcher.stop()
+
+        try:
+            # Test the actual NewsService class directly
+            mock_repository = Mock()
+            mock_repository.get_local_portal_statistics.side_effect = Exception("Repository error")
+
+            # Test if the service correctly re-raises the exception
+            with self.assertRaises(Exception):
+                service = NewsService(mock_repository)
+                service.get_local_portal_statistics()
+        finally:
+            # Restart the patcher for other tests
+            self.mock_news_service = self.patcher.start()
+            self.mock_service_instance = Mock()
+            self.mock_news_service.return_value = self.mock_service_instance
