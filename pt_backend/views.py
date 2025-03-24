@@ -110,7 +110,7 @@ class TopNationalPortalsView(APIView):
             serializer = self.serializer_class(top_portals, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
             
-        except Exception as e:
+        except Exception:
             return Response(
                 {"error": "An error occurred while fetching top portals"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
