@@ -98,6 +98,260 @@ class NewsRepositoryTestCase(BaseTestCase):
         result = self.repository.get_all_news_name()
         self.assertEqual(result, {"error": "Error retrieving news"})
 
+class NewsRepositoryTopLocalPortalsTestCase(TestCase):
+    def setUp(self):
+        self.repository = NewsRepository()
+
+        self.disease = Disease.objects.create(name="COVID-19", level_of_alertness=5)
+        self.location = Location.objects.create(
+            latitude=-6.9175, longitude=107.6191, city="Bandung"
+        )
+        self.case = Case.objects.create(
+            id=uuid.uuid4(), gender="Pria", age=30, city="Jakarta", status="kematian", disease=self.disease, location=self.location
+        )
+
+        # Create 6 news objects
+        self.news_local = [
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="kompas.com",
+                type="Lokal",
+                title="News 1",
+                content="Content 1",
+                url="https://kompas.com/1",
+                author="Author 1",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="detik.com",
+                type="Lokal",
+                title="News 2",
+                content="Content 2",
+                url="https://detik.com/1",
+                author="Author 2",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="cnn.com",
+                type="Lokal",
+                title="News 3",
+                content="Content 3",
+                url="https://cnn.com/1",
+                author="Author 3",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="tempo.co",
+                type="Lokal",
+                title="News 4",
+                content="Content 4",
+                url="https://tempo.co/1",
+                author="Author 4",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="republika.co.id",
+                type="Lokal",
+                title="News 5",
+                content="Content 5",
+                url="https://republika.co.id/1",
+                author="Author 5",
+                case=self.case
+            ),
+            News.objects.create(
+                id=uuid.uuid4(),
+                portal="tribun.com",
+                type="Lokal",
+                title="News 6",
+                content="Content 6",
+                url="https://tribun.com/1",
+                author="Author 6",
+                case=self.case
+            )
+        ]
+
+    def test_get_top_five_local_portals(self):
+        top_portals = self.repository.get_top_five_local_portals()
+        self.assertEqual(top_portals.count(), 5)
+
+        portals = [item["portal"] for item in top_portals]
+        self.assertEqual(len(portals), 5)
+
+        for portal in top_portals:
+            self.assertEqual(portal["count"], 1)
+
+        self.assertNotIn("tribun.com", portals)
+
+    def test_get_top_five_local_portals_empty(self):
+        News.objects.all().delete()
+
+        top_portals = self.repository.get_top_five_local_portals()
+        self.assertEqual(top_portals, [])
+
+    def test_get_top_five_local_portals_less_than_five(self):
+        News.objects.filter(portal="tribun.com").delete()
+        News.objects.filter(portal="republika.co.id").delete()
+
+        top_portals = self.repository.get_top_five_local_portals()
+        self.assertEqual(top_portals.count(), 4)
+
+        portals = [item["portal"] for item in top_portals]
+        self.assertEqual(len(portals), 4)
+
+        for portal in top_portals:
+            self.assertEqual(portal["count"], 1)
+
+        self.assertNotIn("tribun.com", portals)
+        self.assertNotIn("replubika.co.id", portals)
+
+    @patch('pt_backend.models.News.objects.filter')
+    def test_get_top_five_local_portals_object_does_not_exist(self, mock_filter):
+        mock_filter.side_effect = ObjectDoesNotExist()
+
+        result = self.repository.get_top_five_local_portals()
+
+        self.assertEqual(
+            result, 
+            {"error": "Error retrieving local portals"}
+        )
+
+        mock_filter.assert_called_once_with(type="Lokal")
+
+class NewsRepositoryLocalPortalStatisticsTestCase(TestCase):
+    def setUp(self):
+        self.repository = NewsRepository()
+
+        # Create diseases
+        self.disease1 = Disease.objects.create(name="COVID-19", level_of_alertness=5)
+        self.disease2 = Disease.objects.create(name="Ebola", level_of_alertness=5)
+        self.disease3 = Disease.objects.create(name="Malaria", level_of_alertness=4)
+
+        # Create locations
+        self.location = Location.objects.create(
+            latitude=-6.9175, longitude=107.6191, city="Bandung", province="West Java"
+        )
+
+        # Create cases
+        self.case1 = Case.objects.create(
+            id=uuid.uuid4(), gender="Pria", age=30, city="Jakarta", 
+            status="Bahaya", severity="hospitalisasi", disease=self.disease1, location=self.location
+        )
+        self.case2 = Case.objects.create(
+            id=uuid.uuid4(), gender="Wanita", age=25, city="Surabaya", 
+            status="Bahaya", severity="mortalitas", disease=self.disease2, location=self.location
+        )
+        self.case3 = Case.objects.create(
+            id=uuid.uuid4(), gender="Pria", age=40, city="Bandung", 
+            status="Biasa", severity="insiden", disease=self.disease3, location=self.location
+        )
+
+        # Create local news from different portals with various diseases
+        self.news_kompas = [
+            News.objects.create(
+                portal="kompas.com", type="Lokal", title="News K1",
+                content="Content K1", url="https://kompas.com/1", author="Author K1", case=self.case1
+            ),
+            News.objects.create(
+                portal="kompas.com", type="Lokal", title="News K2",
+                content="Content K2", url="https://kompas.com/2", author="Author K2", case=self.case1
+            ),
+            News.objects.create(
+                portal="kompas.com", type="Lokal", title="News K3",
+                content="Content K3", url="https://kompas.com/3", author="Author K3", case=self.case2
+            )
+        ]
+
+        self.news_detik = [
+            News.objects.create(
+                portal="detik.com", type="Lokal", title="News D1",
+                content="Content D1", url="https://detik.com/1", author="Author D1", case=self.case1
+            ),
+            News.objects.create(
+                portal="detik.com", type="Lokal", title="News D2",
+                content="Content D2", url="https://detik.com/2", author="Author D2", case=self.case2
+            )
+        ]
+
+        self.news_cnn = [
+            News.objects.create(
+                portal="cnn.com", type="Lokal", title="News C1",
+                content="Content C1", url="https://cnn.com/1", author="Author C1", case=self.case3
+            )
+        ]
+
+        # Create non-local news (shouldn't be included in results)
+        self.news_interlocal = News.objects.create(
+            portal="kompas.com", type="Interlocal", title="News Int",
+            content="Content Int", url="https://kompas.com/int", author="Author Int", case=self.case1
+        )
+
+    def test_get_local_portal_statistics_success(self):
+        # Get portal statistics
+        portal_stats = self.repository.get_local_portal_statistics()
+
+        # Convert to dictionary for easier testing
+        stats_dict = {stat['portal']: stat for stat in portal_stats}
+
+        # Verify kompas.com data
+        self.assertIn('kompas.com', stats_dict)
+        self.assertEqual(stats_dict['kompas.com']['news_count'], 3)
+        self.assertEqual(stats_dict['kompas.com']['disease_count'], 2)  # COVID-19 and Ebola
+
+        # Verify detik.com data
+        self.assertIn('detik.com', stats_dict)
+        self.assertEqual(stats_dict['detik.com']['news_count'], 2)
+        self.assertEqual(stats_dict['detik.com']['disease_count'], 2)  # COVID-19 and Ebola
+
+        # Verify cnn.com data
+        self.assertIn('cnn.com', stats_dict)
+        self.assertEqual(stats_dict['cnn.com']['news_count'], 1)
+        self.assertEqual(stats_dict['cnn.com']['disease_count'], 1)  # Malaria
+
+        # Verify ordering (by news_count descending)
+        portals = [stat['portal'] for stat in portal_stats]
+        self.assertEqual(portals, ['kompas.com', 'detik.com', 'cnn.com'])
+
+    def test_get_local_portal_statistics_empty(self):
+        # Delete all news
+        News.objects.all().delete()
+
+        # Get stats
+        portal_stats = self.repository.get_local_portal_statistics()
+
+        # Verify empty result
+        self.assertEqual(portal_stats, [])
+
+    def test_get_local_portal_statistics_only_interlocal_news(self):
+        # Delete all local news, leaving only interlocal
+        News.objects.filter(type="Lokal").delete()
+
+        # Get stats
+        portal_stats = self.repository.get_local_portal_statistics()
+
+        # Verify empty result since we only have interlocal news
+        self.assertEqual(portal_stats, [])
+
+    @patch('pt_backend.models.News.objects.filter')
+    def test_get_local_portal_statistics_object_does_not_exist(self, mock_filter):
+        # Mock to raise exception
+        mock_filter.side_effect = ObjectDoesNotExist()
+
+        # Call method
+        result = self.repository.get_local_portal_statistics()
+
+        # Verify error response
+        self.assertEqual(
+            result, 
+            {"error": "Error retrieving local portal statistics"}
+        )
+
+        # Verify filter was called with correct parameter
+        mock_filter.assert_called_once_with(type="Lokal")
+
 class CaseRepositoryTestCase(TestCase):
     def setUp(self):
         self.disease = Disease.objects.create(name="COVID-19", level_of_alertness=5)
