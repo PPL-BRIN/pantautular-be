@@ -55,7 +55,7 @@ class DiseaseRepository:
                 result.append(disease_info)
                 
             return result
-        except Exception as e:
+        except Exception:
             return {"error": "Error retrieving disease severity statistics"}
 
 
