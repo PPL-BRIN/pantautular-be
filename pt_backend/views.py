@@ -30,7 +30,7 @@ class AllCaseLocationsView(APIView):
                 return Response({"error": "No case locations found"}, status=status.HTTP_404_NOT_FOUND)
             serialized_data = self.serializer_class(cases, many=True).data
             return Response(serialized_data, status=status.HTTP_200_OK)
-        except Exception as e:
+        except Exception:
             return Response(
                 {"error": INTERNAL_SERVER_ERR_MSG}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -133,7 +133,7 @@ class LocationSeverityStatsView(APIView):
                 "data": serialized_data
             }, status=status.HTTP_200_OK)
             
-        except Exception as e:
+        except Exception:
             return Response(
                 {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
