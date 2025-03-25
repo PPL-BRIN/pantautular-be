@@ -179,10 +179,12 @@ class CaseAgeDistributionTest(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {
-            "under_12": 1,
-            "age_12_25": 1,
-            "age_26_45": 1,
-            "above_45": 1
+            "age_distribution": {
+                "under_12": 1,
+                "age_12_25": 1,
+                "age_26_45": 1,
+                "above_45": 1
+            }
         })
 
         mock_get_age_distribution.assert_called_once()
@@ -195,3 +197,28 @@ class CaseAgeDistributionTest(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertEqual(response.data, {"error": "Service error"})
+
+    @patch('pt_backend.services.CaseService.get_age_distribution')
+    def test_case_age_distribution_empty(self, mock_get_age_distribution):
+        # Mock empty distribution (no cases in any age group)
+        mock_get_age_distribution.return_value = {
+            "under_12": 0,
+            "age_12_25": 0,
+            "age_26_45": 0,
+            "above_45": 0
+        }
+    
+        response = self.client.get('/cases/age-distribution/')
+    
+        # Should still return 200 OK with zeros
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {
+            "age_distribution": {
+                "under_12": 0,
+                "age_12_25": 0,
+                "age_26_45": 0,
+                "above_45": 0
+            }
+        })
+    
+        mock_get_age_distribution.assert_called_once()
