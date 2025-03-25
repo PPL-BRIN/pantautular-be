@@ -101,14 +101,14 @@ class TopNationalPortalsView(APIView):
             
             # Handle empty results
             if not top_portals:
-                return Response([], status=status.HTTP_200_OK)
+                return Response({"national_top": []}, status=status.HTTP_200_OK)
                 
             # Convert queryset to list if needed
             if hasattr(top_portals, 'values'):
                 top_portals = list(top_portals)
                 
             serializer = self.serializer_class(top_portals, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({"national_top": serializer.data}, status=status.HTTP_200_OK)
             
         except Exception:
             return Response(
