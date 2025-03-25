@@ -159,50 +159,26 @@ class TopNationalPortalsViewTest(TestCase):
             {"portal": "republika.co.id", "count": 2}
         ]
         self.mock_service_instance.get_top_national_portals.return_value = mock_data
-
+    
         # Make request
         response = self.client.get('/news/top-national-portals/')
-
+    
         # Assertions
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json(), mock_data)
+        self.assertEqual(response.json(), {"national_top": mock_data})  # Changed to match new structure
         self.mock_service_instance.get_top_national_portals.assert_called_once()
-
+    
     def test_get_top_portals_empty_result(self):
         # Mock empty result
         self.mock_service_instance.get_top_national_portals.return_value = []
-
+    
         # Make request
         response = self.client.get('/news/top-national-portals/')
-
+    
         # Assertions
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json(), [])
-
-    def test_get_top_portals_repository_error(self):
-        # Mock service error
-        self.mock_service_instance.get_top_national_portals.side_effect = Exception("Database error")
-
-        # Make request
-        response = self.client.get('/news/top-national-portals/')
-
-        # Assertions
-        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertEqual(response.json(), {"error": "An error occurred while fetching top portals"})
-
-    def test_get_top_portals_error_response_from_repository(self):
-        """Test handling of error response object from repository"""
-        # Mock repository returning an error dictionary
-        error_response = {"error": "Error retrieving national portals"}
-        self.mock_service_instance.get_top_national_portals.return_value = error_response
-
-        # Make request
-        response = self.client.get('/news/top-national-portals/')
-
-        # Assertions
-        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        self.assertEqual(response.json(), {"error": "An error occurred while fetching top portals"})
-
+        self.assertEqual(response.json(), {"national_top": []})  # Changed to match new structure
+    
     def test_get_top_portals_queryset_conversion(self):
         """Test queryset conversion in view - covers views.py line 108"""
         # Create a mock queryset-like object
@@ -230,8 +206,34 @@ class TopNationalPortalsViewTest(TestCase):
         
         # Assertions
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Verify the data was properly converted and serialized
-        self.assertTrue(isinstance(response.json(), list))
+        # Verify the response structure and that it's a dictionary with a list under "national_top"
+        self.assertTrue(isinstance(response.json(), dict))  # Changed to check dict instead of list
+        self.assertTrue("national_top" in response.json())
+        self.assertTrue(isinstance(response.json()["national_top"], list))  # Check that value is a list
+
+    def test_get_top_portals_repository_error(self):
+        # Mock service error
+        self.mock_service_instance.get_top_national_portals.side_effect = Exception("Database error")
+
+        # Make request
+        response = self.client.get('/news/top-national-portals/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.json(), {"error": "An error occurred while fetching top portals"})
+
+    def test_get_top_portals_error_response_from_repository(self):
+        """Test handling of error response object from repository"""
+        # Mock repository returning an error dictionary
+        error_response = {"error": "Error retrieving national portals"}
+        self.mock_service_instance.get_top_national_portals.return_value = error_response
+
+        # Make request
+        response = self.client.get('/news/top-national-portals/')
+
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.json(), {"error": "An error occurred while fetching top portals"})
 
     def test_news_service_exception_propagation(self):
         """Test service properly propagates exceptions to the view"""
