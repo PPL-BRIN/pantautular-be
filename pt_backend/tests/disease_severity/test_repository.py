@@ -17,6 +17,11 @@ class DiseaseRepositoryTestCase(TestCase):
             name="Test Disease 2",
             level_of_alertness=2
         )
+        self.disease3 = Disease.objects.create(
+            id=uuid.uuid4(),
+            name="Test Disease 3",
+            level_of_alertness=4
+        )
         
         # Create test locations
         self.location1 = Location.objects.create(
@@ -81,9 +86,13 @@ class DiseaseRepositoryTestCase(TestCase):
     def test_get_disease_severity_stats(self):
         """Test that disease severity stats are correctly calculated"""
         results = self.repository.get_disease_severity_stats()
+        # print("\nRESULT: ")
+        # for result in results:
+        #     print(result)
+        # print()
         
         # Check we got results for both diseases
-        self.assertEqual(len(results), 2)
+        self.assertEqual(len(results), 3)
         
         # First result should be the disease with most cases (disease1 with 3 cases)
         self.assertEqual(results[0]["name"], "Test Disease 1")
@@ -126,6 +135,10 @@ class DiseaseRepositoryTestCase(TestCase):
         
         # We should now have 17 diseases total (2 original + 15 new)
         results = self.repository.get_disease_severity_stats()
+        # print("\nRESULT: ")
+        # for result in results:
+        #     print(result)
+        # print()
         
         # Check that only 12 are returned
         self.assertEqual(len(results), 12)

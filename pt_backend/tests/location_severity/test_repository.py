@@ -39,7 +39,6 @@ class LocationRepositoryTestCase(TestCase):
             province="Jawa Timur"
         )
         
-        # Create test cases with various severities
         # Cases for DKI Jakarta
         Case.objects.create(
             id=uuid.uuid4(),
@@ -93,7 +92,7 @@ class LocationRepositoryTestCase(TestCase):
         results = self.repository.get_province_severity_stats()
         
         # Check we got results for both provinces
-        self.assertEqual(len(results), 2)
+        self.assertEqual(len(results), 3)
         
         # First result should be the province with most cases (DKI Jakarta with 3 cases)
         self.assertEqual(results[0]["name"], "DKI Jakarta")
@@ -117,12 +116,12 @@ class LocationRepositoryTestCase(TestCase):
         """Test that only top 12 locations are returned"""
         self.disease2, _, _ = generate_test_data(
             num_provinces=15,  # Creates 15 provinces
-            cities_per_province=1,  # Just need 1 city per province to test province stats
-            cases_per_city=5,  # 5 cases per city should be enough
+            cities_per_province=1,  # 1 city per province to test province stats
+            cases_per_city=5,  # 5 cases per city sh
             disease=None  # Create a new disease
         )
 
-        # Now we should have 17 locations total
+        # 17 locations total
         results = self.repository.get_province_severity_stats()
         
         # Check that only 12 are returned
@@ -137,8 +136,8 @@ class LocationRepositoryTestCase(TestCase):
     def test_get_location_severity_stats_error_handling(self):
         """Test error handling in the repository method"""
         # Use return_value instead of side_effect for returning dictionary
-        with patch('pt_backend.repositories.get_severity_stats', 
-                return_value={"error": "Error retrieving province severity statistics"}):
+        with patch('django.db.models.query.QuerySet.annotate', 
+                side_effect=Exception("Test exception")):
             result = self.repository.get_province_severity_stats()
             
             # Check that we get the error dict back
@@ -151,7 +150,7 @@ class LocationRepositoryTestCase(TestCase):
         results = self.repository.get_city_severity_stats()
         
         # Check we got results for all cities in the test data
-        self.assertEqual(len(results), 2)
+        self.assertEqual(len(results), 3)
         
         # First result should be Jakarta Pusat with most cases (3 cases)
         self.assertEqual(results[0]["name"], "Jakarta Pusat")
@@ -161,9 +160,9 @@ class LocationRepositoryTestCase(TestCase):
         self.assertEqual(results[1]["name"], "Bandung")
         self.assertEqual(results[1]["total_cases"], 1)
         
-        # # Surabaya should have 0 cases (no cases created for Surabaya in setUp)
-        # self.assertEqual(results[2]["name"], "Surabaya")
-        # self.assertEqual(results[2]["total_cases"], 0)
+        # # Surabaya should have 0 cases
+        self.assertEqual(results[2]["name"], "Surabaya")
+        self.assertEqual(results[2]["total_cases"], 0)
         
         # Check detailed counts for Jakarta Pusat
         self.assertEqual(results[0]["severity_counts"]["hospitalisasi"], 1)
@@ -178,8 +177,8 @@ class LocationRepositoryTestCase(TestCase):
     def test_get_city_severity_stats_limit(self):
         """Test that only top 12 cities are returned"""
         self.disease2, _, _ = generate_test_data(
-            num_provinces=3,  # Just a few provinces
-            cities_per_province=10,  # Many cities per province = 30 cities total
+            num_provinces=3, 
+            cities_per_province=10,  # 30 cities total
             cases_per_city=random.randint(1, 20)  # Random number of cases to ensure sorting works
         )
         
@@ -197,8 +196,8 @@ class LocationRepositoryTestCase(TestCase):
     def test_get_city_severity_stats_error_handling(self):
         """Test error handling in the repository method"""
         # Use return_value instead of side_effect for returning dictionary
-        with patch('pt_backend.repositories.get_severity_stats', 
-                return_value={"error": "Error retrieving city severity statistics"}):
+        with patch('django.db.models.query.QuerySet.annotate', 
+                side_effect=Exception("Test exception")):
             result = self.repository.get_city_severity_stats()
             
             # Check that we get the error dict back
