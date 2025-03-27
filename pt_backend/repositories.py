@@ -1,6 +1,6 @@
 from .models import Case, Disease, Location, News
 from django.core.exceptions import ObjectDoesNotExist
-from .models import Case
+from django.db.models import Count, Case as DjangoCase, When, IntegerField, Sum
 from .interfaces import CaseRepositoryInterface
 
 class DiseaseRepository:
@@ -12,6 +12,52 @@ class DiseaseRepository:
             return list(diseases)
         except ObjectDoesNotExist:
             return {"error": "Error retrieving diseases"}
+    
+    def get_disease_severity_stats(self):
+        try:
+            diseases = Disease.objects.annotate(
+                hospitalisasi_count=Sum(
+                    DjangoCase(
+                        When(cases__severity__iexact='hospitalisasi', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                insiden_count=Sum(
+                    DjangoCase(
+                        When(cases__severity__iexact='insiden', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                mortalitas_count=Sum(
+                    DjangoCase(
+                        When(cases__severity__iexact='mortalitas', then=1),
+                        default=0,
+                        output_field=IntegerField()
+                    )
+                ),
+                total_cases=Count('cases')
+            ).order_by('-total_cases')[:12]
+            
+            # Format the response
+            result = []
+            for disease in diseases:
+                disease_info = {
+                    "name": disease.name,
+                    "severity_counts": {
+                        "hospitalisasi": disease.hospitalisasi_count or 0,
+                        "insiden": disease.insiden_count or 0,
+                        "mortalitas": disease.mortalitas_count or 0
+                    },
+                    "total_cases": disease.total_cases or 0
+                }
+                result.append(disease_info)
+                
+            return result
+        except Exception:
+            return {"error": "Error retrieving disease severity statistics"}
+
 
 class LocationRepository:
     def get_all_locations_name(self):
@@ -23,7 +69,6 @@ class LocationRepository:
         except ObjectDoesNotExist:
             return {"error": "Error retrieving locations"}
         
-
 class NewsRepository:
     def get_all_news_name(self):
         try:

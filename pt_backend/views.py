@@ -1,12 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import CaseLocationSerializer
-from .services import CacheService, CaseService
+from .serializers import CaseLocationSerializer, DiseaseSeverityStatsSerializer
+from .services import CacheService, CaseService, DiseaseService
 from .filter.service import CaseFilterService
 from .repositories import CaseRepository, DiseaseRepository, LocationRepository, NewsRepository
 from .authentication import APIKeyAuthentication
 
+INTERNAL_SERVER_ERR_MSG = "An unexpected error occurred. Please try again later."
 
 class AllCaseLocationsView(APIView):
     authentication_classes = [APIKeyAuthentication]
@@ -28,9 +29,8 @@ class AllCaseLocationsView(APIView):
                 return Response({"error": "No case locations found"}, status=status.HTTP_404_NOT_FOUND)
             serialized_data = self.serializer_class(cases, many=True).data
             return Response(serialized_data, status=status.HTTP_200_OK)
-        except Exception as e:
-            print(e)
-            return Response({"error": "An unexpected error occurred. Please try again later."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            return Response({"error": INTERNAL_SERVER_ERR_MSG}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
         try:
@@ -50,13 +50,11 @@ class AllCaseLocationsView(APIView):
                 self.serializer_class(cases, many=True).data,
                 status=status.HTTP_200_OK
             )
-        except Exception as e:
+        except Exception:
             return Response(
-                {"error": "An unexpected error occurred. Please try again later."},
+                {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
 
 class FiltersView(APIView):
     def get(self, request):
@@ -79,3 +77,31 @@ class FiltersView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class DiseaseSeverityStatsView(APIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = []
+    
+    serializer_class = DiseaseSeverityStatsSerializer
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = DiseaseService()
+    
+    def get(self, request):
+        try:
+            stats = self.service.get_disease_severity_stats()
+            
+            if isinstance(stats, dict) and "error" in stats:
+                return Response(stats, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            serialized_data = self.serializer_class(stats, many=True).data
+            return Response({
+                "data": serialized_data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception:
+            return Response(
+                {"error": INTERNAL_SERVER_ERR_MSG},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
