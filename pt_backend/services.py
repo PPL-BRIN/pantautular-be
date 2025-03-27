@@ -1,3 +1,4 @@
+from .repositories import DiseaseRepository, LocationRepository
 from .interfaces import CaseRetrievalInterface, CaseRepositoryInterface, CacheInterface
 from django.core.cache import cache
 
@@ -26,3 +27,22 @@ class CacheService(CacheInterface):
 
     def delete(self, key):
         cache.delete(key)
+
+class DiseaseService:
+    def __init__(self, repository=None):
+        self.repository = repository or DiseaseRepository()
+    
+    def get_disease_severity_stats(self):
+        print("Service: Fetching disease severity stats")
+        result = self.repository.get_disease_severity_stats()
+        print(f"Service: Received result type: {type(result)}")
+        return result
+
+class LocationService:
+    def __init__(self, repository=None):
+        self.repository = repository or LocationRepository()
+        
+    def get_province_severity_stats(self):
+        result = self.repository.get_province_severity_stats()
+        return result
+        
