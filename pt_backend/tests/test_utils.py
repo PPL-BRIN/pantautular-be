@@ -49,7 +49,7 @@ def create_location(city_name, province_name):
     # Indonesia roughly spans -11 to 6 latitude, 95 to 141 longitude
     latitude = random.uniform(-10, 6)
     longitude = random.uniform(95, 140)
-    
+
     return Location.objects.create(
         id=uuid.uuid4(),
         city=city_name,
@@ -102,27 +102,27 @@ def generate_test_data(
     # Create a disease if not provided
     if not disease:
         disease = create_test_disease()
-    
+
     # Select provinces to use
     selected_provinces = random.sample(PROVINCE_NAMES, min(num_provinces, len(PROVINCE_NAMES)))
-    
+
     locations = {}
     all_cases = []
-    
+
     # Create locations and cases for each province
     for province in selected_provinces:
         locations[province] = []
-        
+
         # Generate cities for this province
         for i in range(cities_per_province):
             city_name = generate_city_name(i)
             location = create_location(city_name, province)
-            
+
             # Store location
             locations[province].append(location)
-            
+
             # Create and store cases
             cases = create_cases_for_location(location, cases_per_city, disease)
             all_cases.extend(cases)
-    
+
     return disease, locations, all_cases

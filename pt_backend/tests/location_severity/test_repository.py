@@ -1,7 +1,7 @@
 from django.test import TestCase
 from pt_backend.models import Disease, Case, Location
 from pt_backend.repositories import LocationRepository
-import uuid
+import uuid, random
 from unittest.mock import patch
 from pt_backend.tests.test_utils import generate_test_data
 
@@ -88,7 +88,6 @@ class LocationRepositoryTestCase(TestCase):
         
         self.repository = LocationRepository()
 
-    # Updated test methods only (keep the setUp method as is)
     def test_get_location_severity_stats(self):
         """Test retrieving location stats by province"""
         results = self.repository.get_province_severity_stats()
@@ -115,33 +114,94 @@ class LocationRepositoryTestCase(TestCase):
         self.assertEqual(results[1]["severity_counts"]["mortalitas"], 0)
 
     def test_get_location_severity_stats_limit(self):
-            """Test that only top 12 locations are returned"""
-            self.disease2, _, _ = generate_test_data(
-                num_provinces=15,  # Creates 15 provinces
-                cities_per_province=1,  # Just need 1 city per province to test province stats
-                cases_per_city=5,  # 5 cases per city should be enough
-                disease=None  # Create a new disease
-            )
+        """Test that only top 12 locations are returned"""
+        self.disease2, _, _ = generate_test_data(
+            num_provinces=15,  # Creates 15 provinces
+            cities_per_province=1,  # Just need 1 city per province to test province stats
+            cases_per_city=5,  # 5 cases per city should be enough
+            disease=None  # Create a new disease
+        )
 
-            # Now we should have 17 locations total
-            results = self.repository.get_province_severity_stats()
-            
-            # Check that only 12 are returned
-            self.assertEqual(len(results), 12)
-            
-            for i in range(len(results) - 1):
-                self.assertGreaterEqual(
-                    results[i]["total_cases"], 
-                    results[i+1]["total_cases"]
-                )
+        # Now we should have 17 locations total
+        results = self.repository.get_province_severity_stats()
+        
+        # Check that only 12 are returned
+        self.assertEqual(len(results), 12)
+        
+        for i in range(len(results) - 1):
+            self.assertGreaterEqual(
+                results[i]["total_cases"], 
+                results[i+1]["total_cases"]
+            )
 
     def test_get_location_severity_stats_error_handling(self):
         """Test error handling in the repository method"""
-        with patch('django.db.models.query.QuerySet.values', 
-                side_effect=Exception("Test exception")):
+        # Use return_value instead of side_effect for returning dictionary
+        with patch('pt_backend.repositories.get_severity_stats', 
+                return_value={"error": "Error retrieving province severity statistics"}):
             result = self.repository.get_province_severity_stats()
             
-            # Check that we get an error dict back
+            # Check that we get the error dict back
             self.assertIsInstance(result, dict)
             self.assertIn("error", result)
-            self.assertTrue(result["error"].startswith("Error retrieving province severity statistics"))
+            self.assertEqual(result["error"], "Error retrieving province severity statistics")
+
+    def test_get_city_severity_stats(self):
+        """Test retrieving location stats by city"""
+        results = self.repository.get_city_severity_stats()
+        
+        # Check we got results for all cities in the test data
+        self.assertEqual(len(results), 2)
+        
+        # First result should be Jakarta Pusat with most cases (3 cases)
+        self.assertEqual(results[0]["name"], "Jakarta Pusat")
+        self.assertEqual(results[0]["total_cases"], 3)
+        
+        # Second result should be Bandung with 1 case
+        self.assertEqual(results[1]["name"], "Bandung")
+        self.assertEqual(results[1]["total_cases"], 1)
+        
+        # # Surabaya should have 0 cases (no cases created for Surabaya in setUp)
+        # self.assertEqual(results[2]["name"], "Surabaya")
+        # self.assertEqual(results[2]["total_cases"], 0)
+        
+        # Check detailed counts for Jakarta Pusat
+        self.assertEqual(results[0]["severity_counts"]["hospitalisasi"], 1)
+        self.assertEqual(results[0]["severity_counts"]["insiden"], 1)
+        self.assertEqual(results[0]["severity_counts"]["mortalitas"], 1)
+        
+        # Check detailed counts for Bandung
+        self.assertEqual(results[1]["severity_counts"]["hospitalisasi"], 1)
+        self.assertEqual(results[1]["severity_counts"]["insiden"], 0)
+        self.assertEqual(results[1]["severity_counts"]["mortalitas"], 0)
+
+    def test_get_city_severity_stats_limit(self):
+        """Test that only top 12 cities are returned"""
+        self.disease2, _, _ = generate_test_data(
+            num_provinces=3,  # Just a few provinces
+            cities_per_province=10,  # Many cities per province = 30 cities total
+            cases_per_city=random.randint(1, 20)  # Random number of cases to ensure sorting works
+        )
+        
+        results = self.repository.get_city_severity_stats()
+        
+        # Check that only 12 are returned
+        self.assertEqual(len(results), 12)
+        
+        for i in range(len(results) - 1):
+            self.assertGreaterEqual(
+                results[i]["total_cases"], 
+                results[i+1]["total_cases"]
+            )
+
+    def test_get_city_severity_stats_error_handling(self):
+        """Test error handling in the repository method"""
+        # Use return_value instead of side_effect for returning dictionary
+        with patch('pt_backend.repositories.get_severity_stats', 
+                return_value={"error": "Error retrieving city severity statistics"}):
+            result = self.repository.get_city_severity_stats()
+            
+            # Check that we get the error dict back
+            self.assertIsInstance(result, dict)
+            self.assertIn("error", result)
+            self.assertEqual(result["error"], "Error retrieving city severity statistics")

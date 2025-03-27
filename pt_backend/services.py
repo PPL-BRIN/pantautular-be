@@ -45,4 +45,8 @@ class LocationService:
     def get_province_severity_stats(self):
         result = self.repository.get_province_severity_stats()
         return result
+
+    def get_city_severity_stats(self):
+        result = self.repository.get_city_severity_stats()
+        return result
         

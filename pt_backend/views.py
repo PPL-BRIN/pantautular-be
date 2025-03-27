@@ -138,3 +138,32 @@ class LocationSeverityStatsView(APIView):
                 {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+class CitySeverityStatsView(APIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = []
+    
+    serializer_class = LocationSeverityStatsSerializer
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        repository = LocationRepository()
+        self.service = LocationService(repository=repository)
+    
+    def get(self, request):
+        try:
+            stats = self.service.get_city_severity_stats()
+            
+            if isinstance(stats, dict) and "error" in stats:
+                return Response(stats, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            serialized_data = self.serializer_class(stats, many=True).data
+            return Response({
+                "data": serialized_data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception:
+            return Response(
+                {"error": INTERNAL_SERVER_ERR_MSG},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
