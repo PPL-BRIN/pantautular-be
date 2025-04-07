@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import CaseLocationSerializer, DiseaseSeverityStatsSerializer, LocationSeverityStatsSerializer
-from .services import LocationService
+from .services import LocationService, CaseFilterService, CasesSummaryFilterService
 from .services import CacheService, CaseService, DiseaseService
 from .filter.service import CaseFilterService
 from .repositories import CaseRepository, DiseaseRepository, LocationRepository, NewsRepository
@@ -167,3 +167,15 @@ class CitySeverityStatsView(APIView):
                 {"error": INTERNAL_SERVER_ERR_MSG},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class CasesSummaryFilterStatsView(APIView):
+    """
+    API endpoint to provide filtered stats for all dashboard components
+    """
+
+    def get(self, request):
+        # Initialize case summary filter service and get filtered stats
+        cases_summary_filter = CasesSummaryFilterService()
+        results = ""
+        
+        return Response(results)
