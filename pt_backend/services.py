@@ -82,19 +82,32 @@ class CaseFilterService:
         return result
     
     def _filter_by_diseases(self, cases, diseases):
+        if diseases:
+            return cases.filter(disease__name__in=diseases)
         return cases
     
     def _filter_by_provinces(self, cases, provinces):
+        if provinces:
+            return cases.filter(location__province__in=provinces)
         return cases
 
     def _filter_by_cities(self, cases, cities):
+        if cities:
+            return cases.filter(location__city__in=cities)
         return cases
 
     def _filter_by_news_portals(self, cases, news_portals):
+        if news_portals:
+            return cases.filter(news__portal__in=news_portals)
         return cases
 
     def _filter_by_status(self, cases, status):
+        if status:
+            return cases.filter(status__in=status)
         return cases
 
     def _filter_by_news_date_range(self, cases, news_date_range):
+        if news_date_range and len(news_date_range) == 2:
+            start_date, end_date = news_date_range
+            return cases.filter(news__date_published__range=(start_date, end_date))
         return cases
