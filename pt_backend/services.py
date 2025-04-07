@@ -1,4 +1,5 @@
-from .repositories import DiseaseRepository, LocationRepository
+import datetime
+from .repositories import DiseaseRepository, LocationRepository, CaseRepository
 from .interfaces import CaseRetrievalInterface, CaseRepositoryInterface, CacheInterface
 from django.core.cache import cache
 
@@ -10,13 +11,19 @@ class CaseService(CaseRetrievalInterface):
         self.repository = repository
         self.cache_service = cache_service
 
+    def get_all_case(self):
+        cases = self.cache_service.get(self.CACHE_KEY)
+        if cases is None:
+            cases = self.repository.get_all_cases()
+            self.cache_service.set(self.CACHE_KEY, cases, timeout=self.CACHE_TIMEOUT)
+        return cases if cases else []
+
     def get_all_case_locations(self):
         locations = self.cache_service.get(self.CACHE_KEY)
         if locations is None:
             locations = self.repository.get_all_locations()
             self.cache_service.set(self.CACHE_KEY, locations, timeout=self.CACHE_TIMEOUT)
         return locations if locations else []
-
 
 class CacheService(CacheInterface):
     def get(self, key):
@@ -50,3 +57,44 @@ class LocationService:
         result = self.repository.get_city_severity_stats()
         return result
         
+class CaseFilterService:
+    """Service to handle filtering for severity statistics"""
+    def __init__(self, case_service):
+        self.case_service = case_service
+
+    def apply_filters(self, 
+                     diseases=None, 
+                     provinces=None, 
+                     cities=None, 
+                     news_portals=None, 
+                     alert_levels=None, 
+                     date_range=None,
+                     ids_only=False):
+        result = self.case_service.get_all_case()
+        result = self._filter_by_diseases(result, diseases)
+        result = self._filter_by_provinces(result, provinces)
+        result = self._filter_by_cities(result, cities)
+        result = self._filter_by_news_portals(result, news_portals)
+        result = self._filter_by_status(result, alert_levels)
+        result = self._filter_by_news_date_range(result, date_range)
+        if ids_only:
+            return result.values('id')
+        return result
+    
+    def _filter_by_diseases(self, cases, diseases):
+        return cases
+    
+    def _filter_by_provinces(self, cases, provinces):
+        return cases
+
+    def _filter_by_cities(self, cases, cities):
+        return cases
+
+    def _filter_by_news_portals(self, cases, news_portals):
+        return cases
+
+    def _filter_by_status(self, cases, status):
+        return cases
+
+    def _filter_by_news_date_range(self, cases, news_date_range):
+        return cases
