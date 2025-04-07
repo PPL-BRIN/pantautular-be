@@ -58,34 +58,34 @@ class LocationService:
         return result
         
 class CaseFilterService:
-    """Service to handle filtering for severity statistics"""
     def __init__(self, case_service):
         self.case_service = case_service
 
     def apply_filters(self, 
-                     diseases=None, 
+                     disease=None, 
                      provinces=None, 
                      cities=None, 
-                     news_portals=None, 
-                     alert_levels=None, 
+                     portals=None, 
+                     level_of_alertness=None, 
                      date_range=None,
-                     ids_only=False):
-        result = self.case_service.get_all_case()
-        result = self._filter_by_diseases(result, diseases)
-        result = self._filter_by_provinces(result, provinces)
-        result = self._filter_by_cities(result, cities)
-        result = self._filter_by_news_portals(result, news_portals)
-        result = self._filter_by_status(result, alert_levels)
-        result = self._filter_by_news_date_range(result, date_range)
+                     ids_only=False
+                     ):
+        cases = self.case_service.get_all_case()
+        cases = self._filter_by_disease(cases, disease)
+        cases = self._filter_by_provinces(cases, provinces)
+        cases = self._filter_by_cities(cases, cities)
+        cases = self._filter_by_news_portals(cases, portals)
+        cases = self._filter_by_disease_alertness(cases, level_of_alertness)
+        cases = self._filter_by_news_date_range(cases, date_range)
         if ids_only:
-            return result.values('id')
-        return result
-    
-    def _filter_by_diseases(self, cases, diseases):
-        if diseases:
-            return cases.filter(disease__name__in=diseases)
+            return cases.values('id')
         return cases
     
+    def _filter_by_disease(self, cases, disease):
+        if disease:
+            return cases.filter(disease__name__in=disease)
+        return cases
+
     def _filter_by_provinces(self, cases, provinces):
         if provinces:
             return cases.filter(location__province__in=provinces)
@@ -101,15 +101,34 @@ class CaseFilterService:
             return cases.filter(news__portal__in=news_portals)
         return cases
 
-    def _filter_by_status(self, cases, status):
-        if status:
-            return cases.filter(status__in=status)
+    def _filter_by_disease_alertness(self, cases, alertness):
+        if alertness:
+            return cases.filter(disease__level_of_alertness=alertness)
         return cases
 
-    def _filter_by_news_date_range(self, cases, news_date_range):
-        if news_date_range and len(news_date_range) == 2:
-            start_date, end_date = news_date_range
-            return cases.filter(news__date_published__range=(start_date, end_date))
+    def _filter_by_news_date_range(self, cases, date_range):
+        if not date_range:
+            return cases
+        
+        # Handle both tuple and dict formats
+        if isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
+        elif isinstance(date_range, dict):
+            start_date = date_range.get('start')
+            end_date = date_range.get('end')
+        else:
+            return cases
+        
+        if start_date and end_date:
+            # Both dates provided
+            return cases.filter(news__date_published__range=[start_date, end_date])
+        elif start_date:
+            # Only start date provided
+            return cases.filter(news__date_published__gte=start_date)
+        elif end_date:
+            # Only end date provided
+            return cases.filter(news__date_published__lte=end_date)
+        
         return cases
 
 class CasesSummaryFilterService:
