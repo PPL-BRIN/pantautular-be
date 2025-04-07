@@ -114,7 +114,7 @@ class CaseRepositoryTestCase(TestCase):
             location=self.location
         )
         self.repository = CaseRepository()
-
+    
     def test_get_all_case_locations(self):
         locations = self.repository.get_all_locations()
         self.assertTrue(locations.exists())
@@ -129,3 +129,47 @@ class CaseRepositoryTestCase(TestCase):
         Case.objects.all().delete()
         locations = self.repository.get_all_locations()
         self.assertFalse(locations.exists())
+    
+    def test_get_all_cases(self):
+        """Test retrieving all cases with their related fields"""
+        # Call the method we want to test (line 164)
+        cases = self.repository.get_all_cases()
+        
+        # Check that we got results
+        self.assertEqual(len(cases), 1)
+        
+        # Verify the returned data has the expected fields
+        case_data = cases[0]
+        self.assertEqual(str(case_data["id"]), str(self.case.id))
+        self.assertEqual(case_data["disease__name"], "COVID-19")
+        self.assertEqual(case_data["location__city"], "Bandung")
+        self.assertIn("location__province", case_data)
+        self.assertEqual(case_data["status"], "recovered")
+        
+        # Check related fields that might be empty (since no News object exists yet)
+        self.assertIn("news__portal", case_data)
+        self.assertIn("news__date_published", case_data)
+        
+        # Now add a news object and test again
+        from datetime import datetime
+        news_date = datetime.now()
+        news = News.objects.create(
+            id=uuid.uuid4(),
+            portal="Test Portal",
+            title="Test News",
+            type="article",
+            content="Test content",
+            url="http://example.com",
+            author="Test Author",
+            date_published=news_date,
+            case=self.case,
+            img_url="http://example.com/img.jpg"
+        )
+        
+        # Get fresh data after adding the news object
+        cases = self.repository.get_all_cases()
+        case_data = cases[0]
+        
+        # Now news fields should be populated
+        self.assertEqual(case_data["news__portal"], "Test Portal")
+        self.assertIsNotNone(case_data["news__date_published"])

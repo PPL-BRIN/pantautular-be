@@ -1,8 +1,8 @@
 from django.test import TestCase
 from pt_backend.models import Disease, Case, Location
-from pt_backend.repositories import DiseaseRepository
+from pt_backend.repositories import DiseaseRepository, get_entity_severity_stats
 import uuid
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 class DiseaseRepositoryTestCase(TestCase):
     def setUp(self):
@@ -159,3 +159,46 @@ class DiseaseRepositoryTestCase(TestCase):
             self.assertIsInstance(result, dict)  # Should be a dict, not a list
             self.assertIn("error", result)
             self.assertEqual(result["error"], "Error retrieving disease severity statistics")
+
+
+# class TestDiseaseRepositoryWithFiltering(TestCase):
+#     def setUp(self):
+#         # Setup mock data
+#         self.mock_disease = MagicMock(spec=Disease)
+#         self.mock_disease.name = "COVID-19"
+#         self.mock_disease.hospitalisasi_count = 10
+#         self.mock_disease.insiden_count = 5
+#         self.mock_disease.mortalitas_count = 2
+#         self.mock_disease.total_cases = 17
+        
+#         self.repository = DiseaseRepository()
+        
+#     @patch('pt_backend.repositories.get_entity_severity_stats')
+#     def test_get_disease_severity_stats_with_filter(self, mock_get_stats):
+#         # Setup mock
+#         mock_get_stats.return_value = [
+#             {
+#                 "name": "COVID-19",
+#                 "severity_counts": {
+#                     "hospitalisasi": 10,
+#                     "insiden": 5,
+#                     "mortalitas": 2
+#                 },
+#                 "total_cases": 17
+#             }
+#         ]
+        
+#         # Execute with filtered_case_ids
+#         filtered_ids = [1, 2, 3]
+#         result = self.repository.get_disease_severity_stats(filtered_case_ids=filtered_ids)
+        
+#         # Verify
+#         mock_get_stats.assert_called_once_with(
+#             model_class=Disease, 
+#             group_by_field=None,
+#             name_field="name", 
+#             error_prefix="Error retrieving disease",
+#             filtered_case_ids=filtered_ids
+#         )
+#         self.assertEqual(len(result), 1)
+#         self.assertEqual(result[0]["name"], "COVID-19")

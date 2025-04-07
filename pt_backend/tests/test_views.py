@@ -1,11 +1,15 @@
 from django.test import TestCase
+from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 from pt_backend.models import Case, Location, Disease
 from pt_backend.services import CacheService
 import uuid
 import os
-from unittest.mock import patch, Mock
+from unittest.mock import MagicMock, patch, Mock
+from pt_backend.authentication import APIKeyAuthentication
+
+from pt_backend.views import INTERNAL_SERVER_ERR_MSG
 
 
 class CaseAPITest(TestCase):
@@ -77,7 +81,6 @@ class CaseAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(), {"detail": "Invalid API Key"})
 
-
 class CaseFilterPostTest(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -132,3 +135,87 @@ class CaseFilterPostTest(TestCase):
         response = self.client.post('/cases/locations/', {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(), {"detail": "Invalid API Key"})
+
+class AllCaseLocationsViewExceptionTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('all-case-locations')
+    
+    @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)  # Bypass authentication
+    @patch('pt_backend.views.CaseFilterService')
+    def test_post_exception_handling(self, MockFilterService, mock_auth):
+        """Test that post method properly handles exceptions"""
+        # Setup mock filter service to raise an exception
+        mock_filter_service = MagicMock()
+        mock_filter_service.filter_cases.side_effect = Exception("Test exception")
+        MockFilterService.return_value = mock_filter_service
+        
+        # Send POST request with some data
+        response = self.client.post(
+            self.url, 
+            {"disease": "COVID-19"}, 
+            format='json'
+        )
+        
+        # Verify response
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.data, {"error": INTERNAL_SERVER_ERR_MSG})
+        
+        # Verify the filter_cases method was called, triggering the exception
+        mock_filter_service.filter_cases.assert_called_once()
+
+class FiltersViewExceptionTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse('filters')
+    
+    @patch('pt_backend.repositories.DiseaseRepository.get_all_diseases_name')
+    def test_get_exception_handling(self, mock_get_diseases):
+        """Test that FiltersView properly handles exceptions"""
+        # Setup mock to raise an exception
+        mock_error_message = "Test exception message"
+        mock_get_diseases.side_effect = Exception(mock_error_message)
+        
+        # Make the GET request
+        response = self.client.get(self.url)
+        
+        # Verify response status code is 500
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Verify response contains error message
+        self.assertIn("error", response.data)
+        self.assertEqual(response.data["error"], mock_error_message)
+        
+    @patch('pt_backend.repositories.LocationRepository.get_all_locations_name')
+    def test_get_exception_from_location_repository(self, mock_get_locations):
+        """Test exception handling when LocationRepository raises an exception"""
+        # Setup mock to raise an exception
+        mock_error_message = "Location repository error"
+        mock_get_locations.side_effect = Exception(mock_error_message)
+        
+        # Make the GET request
+        response = self.client.get(self.url)
+        
+        # Verify response status code is 500
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Verify response contains error message
+        self.assertIn("error", response.data)
+        self.assertEqual(response.data["error"], mock_error_message)
+        
+    @patch('pt_backend.repositories.NewsRepository.get_all_news_name')
+    def test_get_exception_from_news_repository(self, mock_get_news):
+        """Test exception handling when NewsRepository raises an exception"""
+        # Setup mock to raise an exception
+        mock_error_message = "News repository error"
+        mock_get_news.side_effect = Exception(mock_error_message)
+        
+        # Make the GET request
+        response = self.client.get(self.url)
+        
+        # Verify response status code is 500
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Verify response contains error message
+        self.assertIn("error", response.data)
+        self.assertEqual(response.data["error"], mock_error_message) 
