@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    AllCaseLocationsView, FiltersView, DiseaseSeverityStatsView,
+    AllCaseLocationsView, CasesSummaryFilterStatsView, FiltersView, DiseaseSeverityStatsView,
     LocationSeverityStatsView, CitySeverityStatsView
 )
 
@@ -9,5 +9,6 @@ urlpatterns = [
     path('api/filters/', FiltersView.as_view(), name='filters'),
     path('api/diseases/severity-stats/', DiseaseSeverityStatsView.as_view(), name='disease-severity-stats'),
     path('api/locations/province/severity-stats/', LocationSeverityStatsView.as_view(), name='province-severity-stats'),
-    path('api/locations/city/severity-stats/', CitySeverityStatsView.as_view(), name='city-severity-stats')
+    path('api/locations/city/severity-stats/', CitySeverityStatsView.as_view(), name='city-severity-stats'),
+    path('api/severity-stats/filter/', CasesSummaryFilterStatsView.as_view(), name='dashboard-stats')
 ]

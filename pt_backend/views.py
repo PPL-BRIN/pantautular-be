@@ -174,8 +174,27 @@ class CasesSummaryFilterStatsView(APIView):
     """
 
     def get(self, request):
+        # Extract filter parameters
+        diseases = request.query_params.getlist('disease', [])
+        provinces = request.query_params.getlist('province', [])
+        cities = request.query_params.getlist('city', [])
+        news_portals = request.query_params.getlist('news_portal', [])
+        alert_levels = request.query_params.getlist('alert_level', [])
+        
+        # Handle date range
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        date_range = (start_date, end_date) if start_date or end_date else None
+        
         # Initialize case summary filter service and get filtered stats
         cases_summary_filter = CasesSummaryFilterService()
-        results = ""
+        results = cases_summary_filter.get_filter_stats(
+            diseases=diseases if diseases else None,
+            provinces=provinces if provinces else None, 
+            cities=cities if cities else None,
+            news_portals=news_portals if news_portals else None,
+            alert_levels=alert_levels if alert_levels else None,
+            date_range=date_range
+        )
         
         return Response(results)
