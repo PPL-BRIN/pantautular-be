@@ -132,5 +132,14 @@ class CasesSummaryFilterService:
                           alert_levels=None, 
                           date_range=None):
         
+        # Get filtered case IDs from filter service
+        filtered_case_ids = self.filter_service.apply_filters(
+            diseases, provinces, cities, news_portals, alert_levels, date_range, ids_only=True
+        )
+        
+        # Get all three statistics using the same filtered case IDs
         return {
+            "disease_stats": self.disease_repository.get_disease_severity_stats(filtered_case_ids),
+            "province_stats": self.location_repository.get_province_severity_stats(filtered_case_ids),
+            "city_stats": self.location_repository.get_city_severity_stats(filtered_case_ids)
         }
