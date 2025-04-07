@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+
+from pt_backend.models import Location
 from .serializers import CaseLocationSerializer, DiseaseSeverityStatsSerializer, LocationSeverityStatsSerializer
 from .services import LocationService, CaseFilterService, CasesSummaryFilterService
 from .services import CacheService, CaseService, DiseaseService
@@ -172,6 +174,8 @@ class CasesSummaryFilterStatsView(APIView):
     """
     API endpoint to provide filtered stats for all dashboard components
     """
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = []
 
     def get(self, request):
         # Extract filter parameters
@@ -198,3 +202,57 @@ class CasesSummaryFilterStatsView(APIView):
         )
         
         return Response(results)
+    
+    def post(self, request):
+        """Handle POST requests with JSON payload for filtering"""
+        try:
+            # Extract filter parameters from request body
+            data = request.data
+            
+            # Extract filter values, defaulting to None if not provided or empty
+            diseases = data.get('diseases', []) or None
+            
+            # Handle locations by checking if the list exists and isn't empty
+            city_names = data.get('locations', [])
+        
+            # Get provinces for the specified cities in a single query
+            provinces = []
+            cities = None
+            if city_names:
+                # Get distinct province names for all matching cities
+                province_results = Location.objects.filter(
+                    city__in=city_names
+                ).values_list('province', flat=True).distinct()
+                
+                provinces = list(province_results) if province_results else None
+                cities = city_names
+            
+            # Process other filters
+            portals = data.get('portals', []) or None
+            level_of_alertness = data.get('level_of_alertness') or None
+            if level_of_alertness:
+                level_of_alertness = int(level_of_alertness)
+            
+            # Handle date range
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            date_range = (start_date, end_date) if start_date or end_date else None
+            
+            # Initialize case summary filter service and get filtered stats
+            cases_summary_filter = CasesSummaryFilterService()
+            results = cases_summary_filter.get_filter_stats(
+                diseases=diseases,
+                provinces=provinces,
+                cities=cities,
+                news_portals=portals,
+                alert_levels=level_of_alertness,
+                date_range=date_range
+            )
+            
+            return Response(results, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response(
+                {"error": f"Error processing filter request: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
