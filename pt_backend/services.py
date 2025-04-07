@@ -111,3 +111,26 @@ class CaseFilterService:
             start_date, end_date = news_date_range
             return cases.filter(news__date_published__range=(start_date, end_date))
         return cases
+
+class CasesSummaryFilterService:
+    """Service to handle filtering for summary statistics"""
+    def __init__(self):
+        self.disease_repository = DiseaseRepository()
+        self.location_repository = LocationRepository()
+        self.filter_service = CaseFilterService(
+            case_service=CaseService(
+                repository=CaseRepository(), 
+                cache_service=CacheService()
+            )
+        )
+        
+    def get_filter_stats(self, 
+                          diseases=None, 
+                          provinces=None, 
+                          cities=None, 
+                          news_portals=None, 
+                          alert_levels=None, 
+                          date_range=None):
+        
+        return {
+        }
