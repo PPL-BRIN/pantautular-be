@@ -267,8 +267,8 @@ class TestLocalPortalStatisticsReport(unittest.TestCase):
         report = self.report_service.generate_report(filtered_cases=cases)
         
         self.assertEqual(len(report), 1)  # Only kompas.com is local
-        self.assertTrue("bbc.com" not in report)
-        self.assertTrue("cnn.com" not in report)
+        self.assertNotIn("bbc.com", report)
+        self.assertNotIn("cnn.com", report)
         
         # Check kompas.com stats
         self.assertEqual(report["kompas.com"]["news_count"], 1)
@@ -306,5 +306,5 @@ class TestLocalPortalStatisticsReport(unittest.TestCase):
         ]
         
         report = self.report_service.generate_report(filtered_cases=cases)
-        
+
         self.assertEqual(len(report), 0)
