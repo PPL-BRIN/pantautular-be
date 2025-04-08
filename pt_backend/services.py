@@ -40,9 +40,7 @@ class DiseaseService:
         self.repository = repository or DiseaseRepository()
     
     def get_disease_severity_stats(self):
-        print("Service: Fetching disease severity stats")
         result = self.repository.get_disease_severity_stats()
-        print(f"Service: Received result type: {type(result)}")
         return result
 
 class LocationService:
