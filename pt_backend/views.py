@@ -176,32 +176,6 @@ class CasesSummaryFilterStatsView(APIView):
     """
     authentication_classes = [APIKeyAuthentication]
     permission_classes = []
-
-    def get(self, request):
-        # Extract filter parameters
-        diseases = request.query_params.getlist('disease', [])
-        provinces = request.query_params.getlist('province', [])
-        cities = request.query_params.getlist('city', [])
-        news_portals = request.query_params.getlist('news_portal', [])
-        alert_levels = request.query_params.getlist('alert_level', [])
-        
-        # Handle date range
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-        date_range = (start_date, end_date) if start_date or end_date else None
-        
-        # Initialize case summary filter service and get filtered stats
-        cases_summary_filter = CasesSummaryFilterService()
-        results = cases_summary_filter.get_filter_stats(
-            diseases=diseases if diseases else None,
-            provinces=provinces if provinces else None, 
-            cities=cities if cities else None,
-            news_portals=news_portals if news_portals else None,
-            alert_levels=alert_levels if alert_levels else None,
-            date_range=date_range
-        )
-        
-        return Response(results)
     
     def post(self, request):
         """Handle POST requests with JSON payload for filtering"""
@@ -213,19 +187,43 @@ class CasesSummaryFilterStatsView(APIView):
             diseases = data.get('diseases', []) or None
             
             # Handle locations by checking if the list exists and isn't empty
-            city_names = data.get('locations', [])
+            locations = data.get('locations', [])
         
             # Get provinces for the specified cities in a single query
-            provinces = []
+            provinces = None
             cities = None
-            if city_names:
-                # Get distinct province names for all matching cities
-                province_results = Location.objects.filter(
-                    city__in=city_names
-                ).values_list('province', flat=True).distinct()
+
+            if locations:
+                provinces = []
+                cities = []
                 
-                provinces = list(province_results) if province_results else None
-                cities = city_names
+                # Check each location to determine if it's a province or a city
+                for location in locations:
+                    # Check if location is a province
+                    province_exists = Location.objects.filter(province=location).exists()
+                    if province_exists:
+                        provinces.append(location)
+                    
+                    # Check if location is a city
+                    city_exists = Location.objects.filter(city=location).exists()
+                    if city_exists:
+                        cities.append(location)
+                        
+                        # Add the associated province(s) for each city
+                        city_provinces = Location.objects.filter(
+                            city=location
+                        ).values_list('province', flat=True).distinct()
+                        provinces.extend(city_provinces)
+                
+                # Remove duplicates from provinces list
+                if provinces:
+                    provinces = list(set(provinces))
+                else:
+                    provinces = None
+                    
+                # Handle empty lists
+                if not cities:
+                    cities = None
             
             # Process other filters
             portals = data.get('portals', []) or None
