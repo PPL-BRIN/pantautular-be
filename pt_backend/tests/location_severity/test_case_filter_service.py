@@ -1,5 +1,5 @@
 from django.test import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 from django.db.models import QuerySet
 from pt_backend.services import CaseFilterService, CaseService
 from pt_backend.models import Case
@@ -40,7 +40,7 @@ class CaseFilterServiceTestCase(TestCase):
         """Test apply_filters with disease filter"""
         # Call the method with diseases filter
         diseases = ["COVID-19", "Dengue"]
-        result = self.filter_service.apply_filters(diseases=diseases)
+        result = self.filter_service.apply_filters(disease=diseases)
         
         # Verify filter was called with correct parameters
         self.mock_queryset.filter.assert_called_with(disease__name__in=diseases)
@@ -76,7 +76,7 @@ class CaseFilterServiceTestCase(TestCase):
         """Test apply_filters with news portal filter"""
         # Call the method with news portal filter
         news_portals = ["Kompas", "Detik"]
-        result = self.filter_service.apply_filters(news_portals=news_portals)
+        result = self.filter_service.apply_filters(portals=news_portals)
         
         # Verify filter was called with correct parameters
         self.mock_queryset.filter.assert_called_with(news__portal__in=news_portals)
@@ -87,28 +87,87 @@ class CaseFilterServiceTestCase(TestCase):
     def test_apply_filters_with_alert_levels(self):
         """Test apply_filters with alert levels filter"""
         # Call the method with alert level filter
-        alert_levels = ["Biasa", "Waspada"]
-        result = self.filter_service.apply_filters(alert_levels=alert_levels)
+        alert_levels = 2
+        result = self.filter_service.apply_filters(level_of_alertness=alert_levels)
         
         # Verify filter was called with correct parameters
-        self.mock_queryset.filter.assert_called_with(status__in=alert_levels)
+        self.mock_queryset.filter.assert_called_with(disease__level_of_alertness=alert_levels)
         
         # Verify filtered queryset was returned
         self.assertEqual(result, self.mock_queryset)
     
-    def test_apply_filters_with_date_range(self):
-        """Test apply_filters with date range filter"""
-        # Call the method with date range
+    def test_apply_filters_with_date_range_tuple(self):
+        """Test apply_filters with date range tuple"""
+        # Call the method with date range tuple
         start_date = "2023-01-01"
         end_date = "2023-12-31"
-        result = self.filter_service.apply_filters(date_range=(start_date, end_date))
+        date_range = (start_date, end_date)
+        result = self.filter_service.apply_filters(date_range=date_range)
         
         # Verify filter was called with correct parameters
         self.mock_queryset.filter.assert_called_with(
-            news__date_published__range=(start_date, end_date)
+            news__date_published__range=[start_date, end_date]
         )
         
         # Verify filtered queryset was returned
+        self.assertEqual(result, self.mock_queryset)
+    
+    def test_apply_filters_with_date_range_dict(self):
+        """Test apply_filters with date range dictionary"""
+        # Call the method with date range dictionary
+        start_date = "2023-01-01"
+        end_date = "2023-12-31"
+        date_range = {'start': start_date, 'end': end_date}
+        result = self.filter_service.apply_filters(date_range=date_range)
+        
+        # Verify filter was called with correct parameters
+        self.mock_queryset.filter.assert_called_with(
+            news__date_published__range=[start_date, end_date]
+        )
+        
+        # Verify filtered queryset was returned
+        self.assertEqual(result, self.mock_queryset)
+    
+    def test_apply_filters_with_start_date_only(self):
+        """Test apply_filters with only start date"""
+        # Call the method with only start date
+        start_date = "2023-01-01"
+        date_range = (start_date, None)
+        result = self.filter_service.apply_filters(date_range=date_range)
+        
+        # Verify filter was called with correct parameters
+        self.mock_queryset.filter.assert_called_with(
+            news__date_published__gte=start_date
+        )
+        
+        # Verify filtered queryset was returned
+        self.assertEqual(result, self.mock_queryset)
+    
+    def test_apply_filters_with_end_date_only(self):
+        """Test apply_filters with only end date"""
+        # Call the method with only end date
+        end_date = "2023-12-31"
+        date_range = (None, end_date)
+        result = self.filter_service.apply_filters(date_range=date_range)
+        
+        # Verify filter was called with correct parameters
+        self.mock_queryset.filter.assert_called_with(
+            news__date_published__lte=end_date
+        )
+        
+        # Verify filtered queryset was returned
+        self.assertEqual(result, self.mock_queryset)
+    
+    def test_apply_filters_with_invalid_date_range(self):
+        """Test apply_filters with invalid date range format"""
+        # Call the method with invalid date range
+        date_range = "2023-01-01 to 2023-12-31"  # Not tuple or dict
+        result = self.filter_service.apply_filters(date_range=date_range)
+        
+        # Verify filter was not called
+        self.mock_queryset.filter.assert_not_called()
+        
+        # Verify original queryset was returned
         self.assertEqual(result, self.mock_queryset)
     
     def test_apply_filters_with_ids_only(self):
@@ -127,103 +186,43 @@ class CaseFilterServiceTestCase(TestCase):
         # Call the method with multiple filters
         diseases = ["COVID-19"]
         provinces = ["DKI Jakarta"]
+        cities = ["Jakarta"]
+        news_portals = ["Kompas"]
+        alert_levels = 3
         date_range = ("2023-01-01", "2023-12-31")
+        
         result = self.filter_service.apply_filters(
-            diseases=diseases,
+            disease=diseases,
             provinces=provinces,
+            cities=cities,
+            portals=news_portals,
+            level_of_alertness=alert_levels,
             date_range=date_range
         )
         
-        # Verify filter was called for each parameter
-        # The exact number of calls depends on implementation
-        self.assertEqual(self.mock_queryset.filter.call_count, 3)
+        # Verify each filter method was called
+        # We can't check exact call order with mock_calls due to implementation details,
+        # but we can check the filter was called for each parameter
+        calls = self.mock_queryset.filter.call_args_list
+        self.assertEqual(len(calls), 6)  # One call for each filter
         
         # Verify filtered queryset was returned
         self.assertEqual(result, self.mock_queryset)
     
-    def test_filter_by_diseases(self):
-        """Test the _filter_by_diseases method directly"""
-        # Setup test
-        diseases = ["COVID-19", "Dengue"]
-        
-        # Call the method directly
-        self.filter_service._filter_by_diseases(self.mock_queryset, diseases)
-        
-        # Verify filter was called correctly
-        self.mock_queryset.filter.assert_called_with(disease__name__in=diseases)
-    
-    def test_filter_by_provinces(self):
-        """Test the _filter_by_provinces method directly"""
-        # Setup test
-        provinces = ["DKI Jakarta", "Jawa Barat"]
-        
-        # Call the method directly
-        self.filter_service._filter_by_provinces(self.mock_queryset, provinces)
-        
-        # Verify filter was called correctly
-        self.mock_queryset.filter.assert_called_with(location__province__in=provinces)
-    
-    def test_filter_by_cities(self):
-        """Test the _filter_by_cities method directly"""
-        # Setup test
-        cities = ["Jakarta", "Bandung"]
-        
-        # Call the method directly
-        self.filter_service._filter_by_cities(self.mock_queryset, cities)
-        
-        # Verify filter was called correctly
-        self.mock_queryset.filter.assert_called_with(location__city__in=cities)
-    
-    def test_filter_by_news_portals(self):
-        """Test the _filter_by_news_portals method directly"""
-        # Setup test
-        news_portals = ["Kompas", "Detik"]
-        
-        # Call the method directly
-        self.filter_service._filter_by_news_portals(self.mock_queryset, news_portals)
-        
-        # Verify filter was called correctly
-        self.mock_queryset.filter.assert_called_with(news__portal__in=news_portals)
-    
-    def test_filter_by_status(self):
-        """Test the _filter_by_status method directly"""
-        # Setup test
-        status = ["Biasa", "Waspada"]
-        
-        # Call the method directly
-        self.filter_service._filter_by_status(self.mock_queryset, status)
-        
-        # Verify filter was called correctly
-        self.mock_queryset.filter.assert_called_with(status__in=status)
-    
-    def test_filter_by_news_date_range(self):
-        """Test the _filter_by_news_date_range method directly"""
-        # Setup test
-        start_date = "2023-01-01"
-        end_date = "2023-12-31"
-        
-        # Call the method directly
-        self.filter_service._filter_by_news_date_range(self.mock_queryset, (start_date, end_date))
-        
-        # Verify filter was called correctly
-        self.mock_queryset.filter.assert_called_with(
-            news__date_published__range=(start_date, end_date)
-        )
-    
-    def test_filter_by_news_date_range_invalid(self):
-        """Test the _filter_by_news_date_range method with invalid input"""
-        # Setup test with empty tuple
-        date_range = ()
-        
-        # Call the method directly
-        result = self.filter_service._filter_by_news_date_range(self.mock_queryset, date_range)
-        
-        # Verify filter was not called
+    def test_filter_by_disease_none(self):
+        """Test _filter_by_disease with None parameter"""
+        result = self.filter_service._filter_by_disease(self.mock_queryset, None)
         self.mock_queryset.filter.assert_not_called()
-        
-        # Verify original queryset was returned
         self.assertEqual(result, self.mock_queryset)
-        
-        # Test with None
-        result = self.filter_service._filter_by_news_date_range(self.mock_queryset, None)
+    
+    def test_filter_by_provinces_empty_list(self):
+        """Test _filter_by_provinces with empty list"""
+        result = self.filter_service._filter_by_provinces(self.mock_queryset, [])
+        self.mock_queryset.filter.assert_not_called()
+        self.assertEqual(result, self.mock_queryset)
+    
+    def test_filter_by_news_date_range_empty_tuple(self):
+        """Test _filter_by_news_date_range with empty tuple"""
+        result = self.filter_service._filter_by_news_date_range(self.mock_queryset, ())
+        self.mock_queryset.filter.assert_not_called()
         self.assertEqual(result, self.mock_queryset)

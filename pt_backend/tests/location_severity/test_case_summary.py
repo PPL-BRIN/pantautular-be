@@ -105,3 +105,26 @@ class CasesSummaryFilterServiceTestCase(TestCase):
             MockCaseService.assert_called_once()
             MockCacheService.assert_called_once()
             MockCaseRepository.assert_called_once()
+    
+    def test_get_filter_stats_with_empty_date_range(self):
+        """Test get_filter_stats with an empty date range (both start and end dates are None)"""
+        # Setup test parameters with empty date range
+        date_range = (None, None)
+        
+        # Call the method
+        result = self.service.get_filter_stats(date_range=date_range)
+        
+        # Verify filter service was called with empty date range
+        self.mock_filter_service.apply_filters.assert_called_once_with(
+            None, None, None, None, None, date_range, ids_only=True
+        )
+        
+        # Verify repositories were called with filtered IDs
+        self.mock_disease_repository.get_disease_severity_stats.assert_called_once_with(self.filtered_case_ids)
+        self.mock_location_repository.get_province_severity_stats.assert_called_once_with(self.filtered_case_ids)
+        self.mock_location_repository.get_city_severity_stats.assert_called_once_with(self.filtered_case_ids)
+        
+        # Verify structure of result
+        self.assertEqual(result["disease_stats"], self.mock_disease_stats)
+        self.assertEqual(result["province_stats"], self.mock_province_stats)
+        self.assertEqual(result["city_stats"], self.mock_city_stats)
