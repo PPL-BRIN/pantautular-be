@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.urls import reverse
-from unittest.mock import patch, MagicMock
+from unittest.mock import call, patch, MagicMock
 from rest_framework.test import APIClient
 from pt_backend.authentication import APIKeyAuthentication
 from pt_backend.services import CasesSummaryFilterService
@@ -58,10 +58,52 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
         mock_service_instance.get_filter_stats.return_value = self.mock_results
         MockService.return_value = mock_service_instance
         
-        # Mock the Location queryset
-        mock_values_list = MagicMock()
-        mock_values_list.distinct.return_value = ["DKI Jakarta", "Jawa Barat"]
-        MockLocationFilter.return_value.values_list.return_value = mock_values_list
+        # Create different mock responses for different filter calls
+        mock_province_check_jakarta = MagicMock()
+        mock_province_check_jakarta.exists.return_value = False
+        
+        mock_province_check_bandung = MagicMock()
+        mock_province_check_bandung.exists.return_value = False
+        
+        mock_city_check_jakarta = MagicMock()
+        mock_city_check_jakarta.exists.return_value = True
+        
+        mock_city_check_bandung = MagicMock()
+        mock_city_check_bandung.exists.return_value = True
+        
+        # This is the critical part - creating a mock that will properly handle
+        # the chained calls for values_list().distinct()
+        mock_values_jakarta = MagicMock()
+        mock_values_distinct_jakarta = MagicMock()
+        mock_values_distinct_jakarta.return_value = ["DKI Jakarta"]
+        mock_values_jakarta.distinct = MagicMock(return_value=["DKI Jakarta"])
+        
+        mock_values_bandung = MagicMock()
+        mock_values_distinct_bandung = MagicMock()
+        mock_values_distinct_bandung.return_value = ["Jawa Barat"]
+        mock_values_bandung.distinct = MagicMock(return_value=["Jawa Barat"])
+        
+        mock_filter_jakarta = MagicMock()
+        mock_filter_jakarta.values_list = MagicMock(return_value=mock_values_jakarta)
+        
+        mock_filter_bandung = MagicMock()
+        mock_filter_bandung.values_list = MagicMock(return_value=mock_values_bandung)
+        
+        # Configure the mock to return different objects based on arguments
+        def mock_filter_side_effect(**kwargs):
+            if 'province' in kwargs:
+                if kwargs['province'] == "Jakarta":
+                    return mock_province_check_jakarta
+                elif kwargs['province'] == "Bandung":
+                    return mock_province_check_bandung
+            elif 'city' in kwargs:
+                if kwargs['city'] == "Jakarta":
+                    return mock_filter_jakarta
+                elif kwargs['city'] == "Bandung":
+                    return mock_filter_bandung
+            return MagicMock()
+        
+        MockLocationFilter.side_effect = mock_filter_side_effect
         
         # Make request with locations
         response = self.client.post(
@@ -72,15 +114,18 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
         
         # Assertions
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        MockLocationFilter.assert_called_once_with(city__in=["Jakarta", "Bandung"])
-        mock_service_instance.get_filter_stats.assert_called_once_with(
-            diseases=None,
-            provinces=["DKI Jakarta", "Jawa Barat"],
-            cities=["Jakarta", "Bandung"],
-            news_portals=None,
-            alert_levels=None,
-            date_range=None
-        )
+        
+        # Get the actual call arguments
+        actual_call = mock_service_instance.get_filter_stats.call_args
+        actual_kwargs = actual_call[1]
+        
+        # Order-independent assertions
+        self.assertEqual(actual_kwargs['diseases'], None)
+        self.assertCountEqual(actual_kwargs['provinces'], ['DKI Jakarta', 'Jawa Barat'])  # Order doesn't matter
+        self.assertCountEqual(actual_kwargs['cities'], ['Jakarta', 'Bandung'])  # Order doesn't matter
+        self.assertEqual(actual_kwargs['news_portals'], None)
+        self.assertEqual(actual_kwargs['alert_levels'], None)
+        self.assertEqual(actual_kwargs['date_range'], None)
     
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.CasesSummaryFilterService')
@@ -176,10 +221,35 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
         mock_service_instance.get_filter_stats.return_value = self.mock_results
         MockService.return_value = mock_service_instance
         
-        # Mock the Location queryset
-        mock_values_list = MagicMock()
-        mock_values_list.distinct.return_value = ["DKI Jakarta"]
-        MockLocationFilter.return_value.values_list.return_value = mock_values_list
+        # Mock Location.objects.filter to return different results based on arguments
+        def mock_filter_side_effect(**kwargs):
+            mock_filter_result = MagicMock()
+            
+            if 'province' in kwargs:
+                # When checking if location is a province
+                province_name = kwargs['province']
+                # Return True only if province is "DKI Jakarta" (not for "Jakarta")
+                mock_exists = MagicMock()
+                mock_exists.exists.return_value = province_name == "DKI Jakarta"
+                return mock_exists
+            
+            elif 'city' in kwargs:
+                # When checking if location is a city
+                city_name = kwargs['city']
+                # Return True only if city is "Jakarta"
+                mock_exists = MagicMock()
+                mock_exists.exists.return_value = city_name == "Jakarta"
+                
+                # For values_list call that gets provinces for cities
+                mock_values = MagicMock()
+                mock_values.distinct.return_value = ["DKI Jakarta"]
+                mock_filter_result.values_list.return_value = mock_values
+                
+                return mock_filter_result
+            
+            return MagicMock()
+        
+        MockLocationFilter.side_effect = mock_filter_side_effect
         
         # Make request with all filters
         response = self.client.post(
@@ -274,3 +344,36 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
         self.assertIn("Test service error", response.data["error"])
+    
+    @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
+    @patch('pt_backend.views.Location.objects.filter')
+    @patch('pt_backend.views.CasesSummaryFilterService')
+    def test_post_with_invalid_locations(self, MockService, MockLocationFilter, mock_auth):
+        """Test POST with locations that don't match any provinces or cities"""
+        # Setup mocks
+        mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
+        mock_service_instance.get_filter_stats.return_value = self.mock_results
+        MockService.return_value = mock_service_instance
+        
+        # Mock the location filter to return False for both province and city checks
+        mock_filter_result = MagicMock()
+        mock_filter_result.exists.return_value = False
+        MockLocationFilter.return_value = mock_filter_result
+        
+        # Make request with invalid locations
+        response = self.client.post(
+            self.url,
+            data={"locations": ["Unknown Location"]},
+            format='json'
+        )
+        
+        # Assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_service_instance.get_filter_stats.assert_called_once_with(
+            diseases=None,
+            provinces=None,  # Should be None since no provinces were found
+            cities=None,     # Should be None since no cities were found
+            news_portals=None,
+            alert_levels=None,
+            date_range=None
+        )
