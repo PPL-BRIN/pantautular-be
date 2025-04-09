@@ -180,73 +180,12 @@ class CasesSummaryFilterStatsView(APIView):
     def post(self, request):
         """Handle POST requests with JSON payload for filtering"""
         try:
-            # Extract filter parameters from request body
-            data = request.data
+            # Extract and process filter parameters
+            filter_params = self._extract_filter_parameters(request.data)
             
-            # Extract filter values, defaulting to None if not provided or empty
-            diseases = data.get('diseases', []) or None
-            
-            # Handle locations by checking if the list exists and isn't empty
-            locations = data.get('locations', [])
-        
-            # Get provinces for the specified cities in a single query
-            provinces = None
-            cities = None
-
-            if locations:
-                provinces = []
-                cities = []
-                
-                # Check each location to determine if it's a province or a city
-                for location in locations:
-                    # Check if location is a province
-                    province_exists = Location.objects.filter(province=location).exists()
-                    if province_exists:
-                        provinces.append(location)
-                        continue
-                    
-                    # Check if location is a city
-                    city_exists = Location.objects.filter(city=location).exists()
-                    if city_exists:
-                        cities.append(location)
-                        
-                        # Add the associated province(s) for each city
-                        city_provinces = Location.objects.filter(
-                            city=location
-                        ).values_list('province', flat=True).distinct()
-                        provinces.extend(city_provinces)
-                
-                # Remove duplicates from provinces list
-                if provinces:
-                    provinces = list(set(provinces))
-                else:
-                    provinces = None
-                    
-                # Handle empty lists
-                if not cities:
-                    cities = None
-            
-            # Process other filters
-            portals = data.get('portals', []) or None
-            level_of_alertness = data.get('level_of_alertness') or None
-            if level_of_alertness:
-                level_of_alertness = int(level_of_alertness)
-            
-            # Handle date range
-            start_date = data.get('start_date')
-            end_date = data.get('end_date')
-            date_range = (start_date, end_date) if start_date or end_date else None
-            
-            # Initialize case summary filter service and get filtered stats
+            # Initialize service and get results
             cases_summary_filter = CasesSummaryFilterService()
-            results = cases_summary_filter.get_filter_stats(
-                diseases=diseases,
-                provinces=provinces,
-                cities=cities,
-                news_portals=portals,
-                alert_levels=level_of_alertness,
-                date_range=date_range
-            )
+            results = cases_summary_filter.get_filter_stats(**filter_params)
             
             return Response(results, status=status.HTTP_200_OK)
         
@@ -255,3 +194,62 @@ class CasesSummaryFilterStatsView(APIView):
                 {"error": f"Error processing filter request: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+    
+    def _extract_filter_parameters(self, data):
+        """Extract and process filter parameters from request data"""
+        # Extract basic filters
+        diseases = data.get('diseases', []) or None
+        locations = data.get('locations', [])
+        portals = data.get('portals', []) or None
+        
+        # Process location data
+        provinces, cities = self._process_location_data(locations)
+        
+        # Process alertness level
+        level_of_alertness = data.get('level_of_alertness') or None
+        if level_of_alertness:
+            level_of_alertness = int(level_of_alertness)
+        
+        # Handle date range
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        date_range = (start_date, end_date) if start_date or end_date else None
+        
+        return {
+            'diseases': diseases,
+            'provinces': provinces,
+            'cities': cities,
+            'news_portals': portals,
+            'alert_levels': level_of_alertness,
+            'date_range': date_range
+        }
+    
+    def _process_location_data(self, locations):
+        """Process location data to extract provinces and cities"""
+        if not locations:
+            return None, None
+            
+        provinces = []
+        cities = []
+        
+        for location in locations:
+            # Check if location is a province
+            if Location.objects.filter(province=location).exists():
+                provinces.append(location)
+                continue
+            
+            # Check if location is a city
+            if Location.objects.filter(city=location).exists():
+                cities.append(location)
+                
+                # Add the associated province(s) for each city
+                city_provinces = Location.objects.filter(
+                    city=location
+                ).values_list('province', flat=True).distinct()
+                provinces.extend(city_provinces)
+        
+        # Clean up results
+        provinces = list(set(provinces)) if provinces else None
+        cities = cities if cities else None
+        
+        return provinces, cities
