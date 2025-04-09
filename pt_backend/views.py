@@ -203,6 +203,7 @@ class CasesSummaryFilterStatsView(APIView):
                     province_exists = Location.objects.filter(province=location).exists()
                     if province_exists:
                         provinces.append(location)
+                        continue
                     
                     # Check if location is a city
                     city_exists = Location.objects.filter(city=location).exists()
