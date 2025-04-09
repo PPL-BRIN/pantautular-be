@@ -22,12 +22,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_diseases(self, MockService, mock_auth):
+    def test_post_with_diseases(self, mock_service, mock_auth):
         """Test POST with disease filter"""
         # Setup mock
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Make request with disease filter
         response = self.client.post(
@@ -51,12 +51,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_cities_to_provinces(self, MockService, MockLocationFilter, mock_auth):
+    def test_post_with_cities_to_provinces(self, mock_service, MockLocationFilter, mock_auth):
         """Test POST with locations that get converted to provinces"""
         # Setup mocks
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Create different mock responses for different filter calls
         mock_province_check_jakarta = MagicMock()
@@ -129,12 +129,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_portals(self, MockService, mock_auth):
+    def test_post_with_portals(self, mock_service, mock_auth):
         """Test POST with news portals filter"""
         # Setup mock
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Make request with news portals
         response = self.client.post(
@@ -156,12 +156,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_level_of_alertness_as_string(self, MockService, mock_auth):
+    def test_post_with_level_of_alertness_as_string(self, mock_service, mock_auth):
         """Test POST with level_of_alertness as string that gets converted to int"""
         # Setup mock
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Make request with level_of_alertness as string
         response = self.client.post(
@@ -183,12 +183,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_date_range(self, MockService, mock_auth):
+    def test_post_with_date_range(self, mock_service, mock_auth):
         """Test POST with date range"""
         # Setup mock
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Make request with date range
         response = self.client.post(
@@ -214,12 +214,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_all_filters(self, MockService, MockLocationFilter, mock_auth):
+    def test_post_with_all_filters(self, mock_service, MockLocationFilter, mock_auth):
         """Test POST with all filter types combined"""
         # Setup mocks
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Mock Location.objects.filter to return different results based on arguments
         def mock_filter_side_effect(**kwargs):
@@ -278,11 +278,11 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_invalid_level_of_alertness(self, MockService, mock_auth):
+    def test_post_with_invalid_level_of_alertness(self, mock_service, mock_auth):
         """Test POST with invalid level_of_alertness"""
         # Setup mock
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Make request with invalid level_of_alertness
         response = self.client.post(
@@ -300,12 +300,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_empty_locations(self, MockService, MockLocationFilter, mock_auth):
+    def test_post_with_empty_locations(self, mock_service, MockLocationFilter, mock_auth):
         """Test POST with empty locations list"""
         # Setup mock
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Make request with empty locations
         response = self.client.post(
@@ -348,12 +348,12 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_invalid_locations(self, MockService, MockLocationFilter, mock_auth):
+    def test_post_with_invalid_locations(self, mock_service, MockLocationFilter, mock_auth):
         """Test POST with locations that don't match any provinces or cities"""
         # Setup mocks
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
         mock_service_instance.get_filter_stats.return_value = self.mock_results
-        MockService.return_value = mock_service_instance
+        mock_service.return_value = mock_service_instance
         
         # Mock the location filter to return False for both province and city checks
         mock_filter_result = MagicMock()

@@ -153,7 +153,7 @@ class CaseRepositoryTestCase(TestCase):
         # Now add a news object and test again
         from datetime import datetime
         news_date = datetime.now()
-        news = News.objects.create(
+        News.objects.create(
             id=uuid.uuid4(),
             portal="Test Portal",
             title="Test News",

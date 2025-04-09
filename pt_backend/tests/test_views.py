@@ -143,12 +143,12 @@ class AllCaseLocationsViewExceptionTestCase(TestCase):
     
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)  # Bypass authentication
     @patch('pt_backend.views.CaseFilterService')
-    def test_post_exception_handling(self, MockFilterService, mock_auth):
+    def test_post_exception_handling(self, mock_filter_service, mock_auth):
         """Test that post method properly handles exceptions"""
         # Setup mock filter service to raise an exception
         mock_filter_service = MagicMock()
         mock_filter_service.filter_cases.side_effect = Exception("Test exception")
-        MockFilterService.return_value = mock_filter_service
+        mock_filter_service.return_value = mock_filter_service
         
         # Send POST request with some data
         response = self.client.post(
