@@ -51,7 +51,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_cities_to_provinces(self, mock_service, MockLocationFilter, mock_auth):
+    def test_post_with_cities_to_provinces(self, mock_service, mock_location_filter, mock_auth):
         """Test POST with locations that get converted to provinces"""
         # Setup mocks
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
@@ -103,7 +103,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
                     return mock_filter_bandung
             return MagicMock()
         
-        MockLocationFilter.side_effect = mock_filter_side_effect
+        mock_location_filter.side_effect = mock_filter_side_effect
         
         # Make request with locations
         response = self.client.post(
@@ -214,7 +214,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_all_filters(self, mock_service, MockLocationFilter, mock_auth):
+    def test_post_with_all_filters(self, mock_service, mock_location_filter, mock_auth):
         """Test POST with all filter types combined"""
         # Setup mocks
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
@@ -249,7 +249,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
             
             return MagicMock()
         
-        MockLocationFilter.side_effect = mock_filter_side_effect
+        mock_location_filter.side_effect = mock_filter_side_effect
         
         # Make request with all filters
         response = self.client.post(
@@ -300,7 +300,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_empty_locations(self, mock_service, MockLocationFilter, mock_auth):
+    def test_post_with_empty_locations(self, mock_service, mock_location_filter, mock_auth):
         """Test POST with empty locations list"""
         # Setup mock
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
@@ -316,7 +316,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
         
         # Assertions
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        MockLocationFilter.assert_not_called()  # Should not query for provinces
+        mock_location_filter.assert_not_called()  # Should not query for provinces
         mock_service_instance.get_filter_stats.assert_called_once_with(
             diseases=None,
             provinces=None,
@@ -348,7 +348,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
     @patch.object(APIKeyAuthentication, 'authenticate', return_value=None)
     @patch('pt_backend.views.Location.objects.filter')
     @patch('pt_backend.views.CasesSummaryFilterService')
-    def test_post_with_invalid_locations(self, mock_service, MockLocationFilter, mock_auth):
+    def test_post_with_invalid_locations(self, mock_service, mock_location_filter, mock_auth):
         """Test POST with locations that don't match any provinces or cities"""
         # Setup mocks
         mock_service_instance = MagicMock(spec=CasesSummaryFilterService)
@@ -358,7 +358,7 @@ class CasesSummaryFilterStatsPostViewTests(TestCase):
         # Mock the location filter to return False for both province and city checks
         mock_filter_result = MagicMock()
         mock_filter_result.exists.return_value = False
-        MockLocationFilter.return_value = mock_filter_result
+        mock_location_filter.return_value = mock_filter_result
         
         # Make request with invalid locations
         response = self.client.post(
