@@ -159,11 +159,11 @@ class CaseRepositoryTestCase(TestCase):
             title="Test News",
             type="article",
             content="Test content",
-            url="http://example.com",
+            url="https://example.com",
             author="Test Author",
             date_published=news_date,
             case=self.case,
-            img_url="http://example.com/img.jpg"
+            img_url="https://example.com/img.jpg"
         )
         
         # Get fresh data after adding the news object
