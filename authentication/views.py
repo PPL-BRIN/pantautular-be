@@ -7,6 +7,7 @@ from pt_backend.models import User
 
 from .serializers import SignupSerializer
 from .security import APIKeyAuthentication
+from .throttling import PasswordResetRateThrottle
 from authentication.registration.service import (
     RegistrationService,
     RegistrationError,
@@ -43,6 +44,7 @@ class SignupAPIView(APIView):
 class PasswordResetLinkRequestView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = []
+    throttle_classes = [PasswordResetRateThrottle]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
