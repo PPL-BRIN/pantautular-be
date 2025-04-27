@@ -1,19 +1,18 @@
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from pt_backend.models import User
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
-from sib_api_v3_sdk import TransactionalEmailsApi, ApiClient, SendSmtpEmail
+from authentication.email_services import BrevoEmailService
 
 import os
 
 class PasswordResetService:
-    def __init__(self, reset_url_base=None):
+    def __init__(self, reset_url_base=None, email_service=None):
         self.reset_url_base = reset_url_base or os.getenv(
             'PROD_PASSWORD_RESET_URL') or os.getenv(
             'DEV_PASSWORD_RESET_URL')
+        
+        self.email_service = email_service or BrevoEmailService()
     
     def find_user_by_email(self, email):
         return User.objects.get(email=email) if User.objects.filter(email=email).exists() else None
@@ -26,20 +25,11 @@ class PasswordResetService:
     def create_password_reset_link(self, uid, token):
         return f"{self.reset_url_base}?uid={uid}&token={token}"
     
-    def send_password_reset_email(self, email, reset_link):
-        send_mail(
-            subject="Reset Password Akunmu",
-            message=f"Klik link berikut untuk mereset password akunmu: {reset_link}",
-            from_email="cyrilus2004@gmail.com",
-            recipient_list=[email],
-            fail_silently=False,
-        )
-    
     def process_reset_request(self, email):
         user = self.find_user_by_email(email)
         uid, token = self.generate_password_reset_token(user)
         reset_link = self.create_password_reset_link(uid, token)
-        self.send_brevo_email(reset_link, email)
+        self.email_service.send_password_reset_email(email, reset_link)
         return True
     
     def get_user_from_uidb64(self, uidb64):
@@ -56,30 +46,3 @@ class PasswordResetService:
         if not user:
             return False
         return default_token_generator.check_token(user, token)
-
-    def send_brevo_email(self, reset_link, email, template_id=1):
-        """
-        Send an email using Brevo service.
-        """
-        configuration = sib_api_v3_sdk.Configuration()
-        configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
-        api_instance = TransactionalEmailsApi(ApiClient(configuration))
-        sender = {"name": "PPL BRIN", "email": "pplbrin02@gmail.com"}
-        recipients = [{"email": email}]
-        params = {
-            "reset_link": reset_link
-        }
-
-        send_smtp_email = SendSmtpEmail(
-            to=recipients,
-            sender=sender,
-            template_id=template_id,
-            params=params
-        )
-
-        try:
-            api_response = api_instance.send_transac_email(send_smtp_email)
-            print("Email sent successfully!")
-            print(api_response)
-        except ApiException as e:
-            print("Exception when calling TransactionalEmailsApi->send_transac_email: %s\n" % e)
