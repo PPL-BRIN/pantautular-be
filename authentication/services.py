@@ -3,6 +3,9 @@ from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from pt_backend.models import User
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from sib_api_v3_sdk import TransactionalEmailsApi, ApiClient, SendSmtpEmail
 
 import os
 
@@ -27,7 +30,7 @@ class PasswordResetService:
         send_mail(
             subject="Reset Password Akunmu",
             message=f"Klik link berikut untuk mereset password akunmu: {reset_link}",
-            from_email="no-reply@gmail.com",
+            from_email="cyrilus2004@gmail.com",
             recipient_list=[email],
             fail_silently=False,
         )
@@ -37,6 +40,7 @@ class PasswordResetService:
         uid, token = self.generate_password_reset_token(user)
         reset_link = self.create_password_reset_link(uid, token)
         self.send_password_reset_email(email, reset_link)
+        self.send_brevo_email(reset_link, email)
         return True
     
     def get_user_from_uidb64(self, uidb64):
@@ -53,3 +57,9 @@ class PasswordResetService:
         if not user:
             return False
         return default_token_generator.check_token(user, token)
+
+    def send_brevo_email(self, reset_link, email, template_id=1):
+        """
+        Send an email using Brevo service.
+        """
+        configuration = sib_api_v3_sdk.Configuration()
