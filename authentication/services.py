@@ -39,7 +39,6 @@ class PasswordResetService:
         user = self.find_user_by_email(email)
         uid, token = self.generate_password_reset_token(user)
         reset_link = self.create_password_reset_link(uid, token)
-        self.send_password_reset_email(email, reset_link)
         self.send_brevo_email(reset_link, email)
         return True
     
