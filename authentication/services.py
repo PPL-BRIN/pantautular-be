@@ -69,7 +69,6 @@ class PasswordResetService:
         params = {
             "reset_link": reset_link
         }
-        template_id = template_id
 
         send_smtp_email = SendSmtpEmail(
             to=recipients,
