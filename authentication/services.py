@@ -24,7 +24,7 @@ class PasswordResetService:
         return uid, token
 
     def create_password_reset_link(self, uid, token):
-        return f"{self.reset_url_base}/{uid}/{token}"
+        return f"{self.reset_url_base}?uid={uid}&token={token}"
     
     def send_password_reset_email(self, email, reset_link):
         send_mail(
