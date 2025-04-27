@@ -36,9 +36,14 @@ class TestPasswordResetService(TestCase):
         """Test that reset link creation works properly"""
         uid, token = self.service.generate_password_reset_token(self.user)
         link = self.service.create_password_reset_link(uid, token)
+        
         self.assertTrue(link.startswith("http://localhost:3000/forgot-password/reset"))
-        self.assertTrue(uid in link)
-        self.assertTrue(token in link)
+        
+        self.assertTrue(f"?uid={uid}" in link)
+        self.assertTrue(f"&token={token}" in link)
+        
+        expected_format = f"{self.service.reset_url_base}?uid={uid}&token={token}"
+        self.assertEqual(link, expected_format)
         
     @patch('authentication.services.send_mail')
     def test_send_reset_email_successful(self, mock_send_mail):
