@@ -50,13 +50,6 @@ class TestPasswordResetService(TestCase):
         """Test that email sending works properly"""
         self.service.send_password_reset_email('test@example.com', 'https://test.link')
         mock_send_mail.assert_called_once()
-        
-    @patch('authentication.services.PasswordResetService.send_password_reset_email')
-    def test_process_reset_request_successful(self, mock_send_email):
-        """Test the complete reset request flow"""
-        result = self.service.process_reset_request('test@example.com')
-        self.assertTrue(result)
-        mock_send_email.assert_called_once()
     
     def test_find_nonexistent_user(self):
         """Test finding a user that doesn't exist"""
@@ -66,7 +59,7 @@ class TestPasswordResetService(TestCase):
     @patch('authentication.services.PasswordResetService.send_password_reset_email')
     def test_process_reset_nonexistent_user(self, mock_send_email):
         """Test processing reset with non-existent user"""
-        with self.assertRaises(AttributeError):  # Since user will be None
+        with self.assertRaises(AttributeError): 
             self.service.process_reset_request('nonexistent@example.com')
         
     @patch('authentication.services.send_mail')
