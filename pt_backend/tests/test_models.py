@@ -265,7 +265,7 @@ class ClimateModelTest(TestCase):
         )
         
         # Create climate record for different province
-        other_climate = Climate.objects.create(
+        Climate.objects.create(
             province="Different Province",
             temperature=20.00,
             humidity=75.00,
