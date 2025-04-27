@@ -63,3 +63,25 @@ class PasswordResetService:
         Send an email using Brevo service.
         """
         configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
+        api_instance = TransactionalEmailsApi(ApiClient(configuration))
+        sender = {"name": "PPL BRIN", "email": "pplbrin02@gmail.com"}
+        recipients = [{"email": email}]
+        params = {
+            "reset_link": reset_link
+        }
+        template_id = template_id
+
+        send_smtp_email = SendSmtpEmail(
+            to=recipients,
+            sender=sender,
+            template_id=template_id,
+            params=params
+        )
+
+        try:
+            api_response = api_instance.send_transac_email(send_smtp_email)
+            print("Email sent successfully!")
+            print(api_response)
+        except ApiException as e:
+            print("Exception when calling TransactionalEmailsApi->send_transac_email: %s\n" % e)
