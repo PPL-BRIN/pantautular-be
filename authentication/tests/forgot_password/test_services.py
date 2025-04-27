@@ -134,7 +134,7 @@ class TestPasswordResetService(TestCase):
             service.process_reset_request('test@example.com')
             
             mock_send.assert_called_once()
-            args, kwargs = mock_send.call_args
+            args, _ = mock_send.call_args
             self.assertEqual(args[0], 'test@example.com')
     
     def test_password_reset_service_with_brevo_email(self):
