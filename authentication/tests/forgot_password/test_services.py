@@ -5,7 +5,8 @@ from unittest.mock import patch, MagicMock
 from authentication.services import PasswordResetService
 from django.contrib.auth.tokens import default_token_generator
 from pt_backend.models import User
-
+from authentication.tests.forgot_password.mock_email_service import MockEmailService
+from authentication.email_services import BrevoEmailService
 from sib_api_v3_sdk.rest import ApiException
 
 class TestPasswordResetService(TestCase):
@@ -26,10 +27,8 @@ class TestPasswordResetService(TestCase):
     def test_generate_token_successful(self):
         """Test that token generation produces valid uid and token"""
         uid, token = self.service.generate_password_reset_token(self.user)
-        # Verify uid decodes to the user's id
         decoded_uid = urlsafe_base64_decode(uid).decode()
         self.assertEqual(int(decoded_uid), self.user.id)
-        # Token should be a non-empty string
         self.assertTrue(token and isinstance(token, str))
         
     def test_create_reset_link_successful(self):
@@ -45,30 +44,11 @@ class TestPasswordResetService(TestCase):
         expected_format = f"{self.service.reset_url_base}?uid={uid}&token={token}"
         self.assertEqual(link, expected_format)
         
-    @patch('authentication.services.send_mail')
-    def test_send_reset_email_successful(self, mock_send_mail):
-        """Test that email sending works properly"""
-        self.service.send_password_reset_email('test@example.com', 'https://test.link')
-        mock_send_mail.assert_called_once()
-    
     def test_find_nonexistent_user(self):
         """Test finding a user that doesn't exist"""
         user = self.service.find_user_by_email('nonexistent@example.com')
         self.assertIsNone(user)
         
-    @patch('authentication.services.PasswordResetService.send_password_reset_email')
-    def test_process_reset_nonexistent_user(self, mock_send_email):
-        """Test processing reset with non-existent user"""
-        with self.assertRaises(AttributeError): 
-            self.service.process_reset_request('nonexistent@example.com')
-        
-    @patch('authentication.services.send_mail')
-    def test_send_email_error(self, mock_send_mail):
-        """Test handling email sending error"""
-        mock_send_mail.side_effect = Exception("Email error")
-        with self.assertRaises(Exception):
-            self.service.send_password_reset_email('test@example.com', 'https://test.link')
-            
     def test_generate_token_invalid_user(self):
         """Test token generation with invalid user"""
         invalid_user = MagicMock()
@@ -80,19 +60,6 @@ class TestPasswordResetService(TestCase):
         """Test handling empty email"""
         user = self.service.find_user_by_email('')
         self.assertIsNone(user)
-        
-    @patch('authentication.services.send_mail')
-    def test_unicode_email(self, mock_send_mail):
-        """Test handling email with unicode characters"""
-        User.objects.create(
-            email='tëst@exämple.com',
-            name='unicodeuser',
-            password='password123',
-            role="TEST ROLE"
-        )
-        
-        self.service.send_password_reset_email('tëst@exämple.com', 'https://test.link')
-        mock_send_mail.assert_called_once()
         
     def test_special_chars_in_url(self):
         """Test handling special characters in URL base"""
@@ -148,90 +115,51 @@ class TestPasswordResetService(TestCase):
         result = self.service.validate_token(self.user, token)
         self.assertFalse(result)
 
-    @patch('authentication.services.TransactionalEmailsApi')
-    @patch('authentication.services.ApiClient')
-    @patch('authentication.services.os.getenv')
-    def test_send_brevo_email_successful(self, mock_getenv, mock_api_client, mock_transactional_api):
-        """Test successful sending of email via Brevo"""
-        mock_getenv.return_value = "mock-api-key"
-        mock_api_instance = mock_transactional_api.return_value
-        mock_api_instance.send_transac_email.return_value = {"message_id": "test-id"}
+    def test_password_reset_service_with_mock_email(self):
+        """Test PasswordResetService with a mock email service"""
         
-        reset_link = "https://example.com/reset/abc123/def456"
-        email = "user@example.com"
-        self.service.send_brevo_email(reset_link, email)
+        mock_email_service = MockEmailService()
+        service = PasswordResetService(email_service=mock_email_service)
         
-        mock_api_instance.send_transac_email.assert_called_once()
+        service.process_reset_request('test@example.com')
         
-        send_email_call = mock_api_instance.send_transac_email.call_args[0][0]
-        self.assertEqual(send_email_call.to[0]["email"], email)
-        self.assertEqual(send_email_call.sender["name"], "PPL BRIN")
-        self.assertEqual(send_email_call.template_id, 1)  # Default template_id
-        self.assertEqual(send_email_call.params["reset_link"], reset_link)
+        self.assertEqual(len(mock_email_service.sent_emails), 1)
+        self.assertEqual(mock_email_service.sent_emails[0]["recipient"], 'test@example.com')
 
-    @patch('authentication.services.TransactionalEmailsApi')
-    @patch('authentication.services.ApiClient')
-    @patch('authentication.services.os.getenv')
-    def test_send_brevo_email_custom_template(self, mock_getenv, mock_api_client, mock_transactional_api):
-        """Test sending email with custom template ID"""
-        mock_getenv.return_value = "mock-api-key"
-        mock_api_instance = mock_transactional_api.return_value
-        
-        custom_template_id = 5
-        self.service.send_brevo_email("https://example.com/reset", "user@example.com", custom_template_id)
-        
-        send_email_call = mock_api_instance.send_transac_email.call_args[0][0]
-        self.assertEqual(send_email_call.template_id, custom_template_id)
+    def test_password_reset_service_default_email_service(self):
+        """Test that PasswordResetService uses default email service when none provided"""
+        with patch('authentication.email_services.BrevoEmailService.send_password_reset_email') as mock_send:
+            service = PasswordResetService() 
+            
+            service.process_reset_request('test@example.com')
+            
+            mock_send.assert_called_once()
+            args, kwargs = mock_send.call_args
+            self.assertEqual(args[0], 'test@example.com')
+    
+    def test_password_reset_service_with_brevo_email(self):
+        """Test PasswordResetService with Brevo email service"""
+        from authentication.email_services import BrevoEmailService
+        with patch('authentication.email_services.TransactionalEmailsApi') as mock_api:
+            mock_instance = MagicMock()
+            mock_api.return_value = mock_instance
+            
+            email_service = BrevoEmailService()
+            service = PasswordResetService(email_service=email_service)
+            
+            service.process_reset_request('test@example.com')
+            
+            mock_instance.send_transac_email.assert_called_once()
 
-    @patch('authentication.services.TransactionalEmailsApi')
-    @patch('authentication.services.ApiClient')
-    @patch('authentication.services.os.getenv')
-    @patch('builtins.print')
-    def test_send_brevo_email_api_exception(self, mock_print, mock_getenv, mock_api_client, mock_transactional_api):
-        """Test handling of API exception when sending email"""
-        mock_getenv.return_value = "mock-api-key"
-        mock_api_instance = mock_transactional_api.return_value
-        mock_api_instance.send_transac_email.side_effect = ApiException(reason="API Error")
+    def test_email_service_error_handling(self):
+        """Test error handling in different email services"""
         
-        self.service.send_brevo_email("https://example.com/reset", "user@example.com")
-        
-        mock_print.assert_any_call("Exception when calling TransactionalEmailsApi->send_transac_email: %s\n" % mock_api_instance.send_transac_email.side_effect)
-
-    @patch('authentication.services.TransactionalEmailsApi')
-    @patch('authentication.services.ApiClient')
-    @patch('authentication.services.os.getenv')
-    def test_send_brevo_email_missing_api_key(self, mock_getenv, mock_api_client, mock_transactional_api):
-        """Test behavior when API key is missing"""
-        mock_getenv.return_value = None
-        
-        self.service.send_brevo_email("https://example.com/reset", "user@example.com")
-        
-        mock_api_client.assert_called_once()
-        config = mock_api_client.call_args[0][0]
-        self.assertIsNone(config.api_key.get('api-key'))
-
-    @patch('authentication.services.PasswordResetService.send_brevo_email')
-    def test_process_reset_request_uses_brevo(self, mock_send_brevo):
-        """Test that process_reset_request uses send_brevo_email"""
-        mock_send_brevo.return_value = None
-        
-        self.service.process_reset_request('test@example.com')
-        
-        mock_send_brevo.assert_called_once()
-        args = mock_send_brevo.call_args[0]
-        self.assertTrue(len(args) >= 2) 
-        self.assertEqual(args[1], 'test@example.com')  
-
-    @patch('authentication.services.TransactionalEmailsApi')
-    @patch('authentication.services.ApiClient')
-    @patch('authentication.services.os.getenv')
-    def test_send_brevo_email_special_chars(self, mock_getenv, mock_api_client, mock_transactional_api):
-        """Test sending email with special characters in reset link"""
-        mock_getenv.return_value = "mock-api-key"
-        mock_api_instance = mock_transactional_api.return_value
-        
-        special_link = "https://example.com/reset?token=abc&id=123#section"
-        self.service.send_brevo_email(special_link, "user@example.com")
-        
-        send_email_call = mock_api_instance.send_transac_email.call_args[0][0]
-        self.assertEqual(send_email_call.params["reset_link"], special_link)
+        with patch('authentication.email_services.TransactionalEmailsApi') as mock_api:
+            mock_instance = MagicMock()
+            mock_api.return_value = mock_instance
+            mock_instance.send_transac_email.side_effect = ApiException(reason="API Error")
+            
+            brevo_service = BrevoEmailService()
+            
+            with self.assertRaises(ApiException):
+                brevo_service.send_password_reset_email("test@example.com", "https://reset.link")
