@@ -19,6 +19,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 INTERNAL_SERVER_ERR_MSG = "An unexpected error occurred. Please try again later."
+PASSWORD_RESET_GENERIC_MSG = "Jika akunmu terdaftar, kami sudah mengirim link untuk mereset password akun Anda"
 
 class SignupAPIView(APIView):
 
@@ -55,16 +56,11 @@ class PasswordResetLinkRequestView(APIView):
                 return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
             
             self.password_reset_service.process_reset_request(email)
-            return Response({"message": "Jika akunmu terdaftar, kami sudah mengirim link untuk mereset password akun Anda"},
-                             status=status.HTTP_200_OK)
-        
+            return Response({"message": PASSWORD_RESET_GENERIC_MSG}, status=status.HTTP_200_OK)
+
         except ParseError:
             return Response({"error": "Invalid JSON in request body"}, status=status.HTTP_400_BAD_REQUEST)
 
-        except User.DoesNotExist:
-            return Response({"message": "Jika akunmu terdaftar, kami sudah mengirim link untuk mereset password akun Anda"},
-                             status=status.HTTP_200_OK)
-        
         except Exception as e:
             logger.error(f"Error sending password reset link: {str(e)}")
             return Response({"error": INTERNAL_SERVER_ERR_MSG}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
