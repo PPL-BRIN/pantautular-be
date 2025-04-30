@@ -101,13 +101,30 @@ class PasswordResetLinkValidateView(APIView):
 class PasswordResetConfirmView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = []
-
+    
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.password_reset_service = PasswordResetService()
         self.password_validation_service = PasswordValidationService()
         self.change_password_service = ChangePasswordService()
 
     def post(self, request, uidb64, token):
+        # Validate passwords
+        validation_result = self._validate_passwords(request)
+        if isinstance(validation_result, Response):
+            return validation_result
+        
+        new_password = validation_result
+        
+        # Validate user and token
+        user = self._validate_user_and_token(uidb64, token)
+        if isinstance(user, Response):
+            return user
+        
+        # Change password
+        return self._change_password(user, new_password)
+    
+    def _validate_passwords(self, request):
         new_password = request.data.get("password")
         if not new_password:
             return Response({"detail": "Password diperlukan"}, status=status.HTTP_400_BAD_REQUEST)
@@ -123,18 +140,24 @@ class PasswordResetConfirmView(APIView):
         if not is_valid:
             return Response({"detail": error_message}, status=status.HTTP_400_BAD_REQUEST)
         
+        return new_password
+    
+    def _validate_user_and_token(self, uidb64, token):
         user = self.password_reset_service.get_user_from_uidb64(uidb64)
         if not user:
             return Response({"detail": "Link tidak valid"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not self.password_reset_service.validate_token(user, token):
             return Response({"detail": "Token tidak valid atau sudah kedaluwarsa"}, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        return user
+    
+    def _change_password(self, user, new_password):
         if not self.change_password_service.change_password(user.email, new_password):
             return Response({"detail": "Gagal mengganti password"}, status=status.HTTP_400_BAD_REQUEST)
             
         return Response({"detail": "Password berhasil diganti"}, status=status.HTTP_200_OK)
-
+    
 class ChangePasswordView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = []
