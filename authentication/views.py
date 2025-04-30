@@ -13,6 +13,7 @@ from .repositories import UserRepository
 from .services import AuthService
 from .serializers import SignupSerializer, LoginSerializer
 from .security import APIKeyAuthentication
+from .strategies import SuccessfulLoginStrategy, LockedAccountStrategy, InvalidCredentialsStrategy
 from authentication.registration.service import (
     RegistrationService,
     RegistrationError,
@@ -229,6 +230,11 @@ class LoginAPIView(APIView):
         super().__init__(**kwargs)
         user_repository = UserRepository()
         self.auth_service = AuthService(user_repository)
+        self.strategies = {
+            'success': SuccessfulLoginStrategy(),
+            'locked': LockedAccountStrategy(),
+            'invalid': InvalidCredentialsStrategy()
+        }
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -241,24 +247,12 @@ class LoginAPIView(APIView):
             )
 
             if tokens and isinstance(tokens, dict) and tokens.get('locked'):
-                return Response(
-                    {"detail": tokens['message']},
-                    status=status.HTTP_423_LOCKED
-                )
+                return self.strategies['locked'].handle_response(tokens)
             
             if not tokens:
-                return Response(
-                    {"detail": "Invalid email or password"},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
+                return self.strategies['invalid'].handle_response(tokens)
             
-            return Response(
-                {
-                    "detail": "Login successful",
-                    "access_token": tokens["access_token"]
-                },
-                status=status.HTTP_200_OK
-            )
+            return self.strategies['success'].handle_response(tokens)
             
         except Exception:
             return Response(
