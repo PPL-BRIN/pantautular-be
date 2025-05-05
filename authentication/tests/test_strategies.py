@@ -16,7 +16,11 @@ class LoginResponseStrategyTests(TestCase):
     def test_base_login_response_strategy(self):
         """Test the base LoginResponseStrategy abstract class"""
         
-        strategy = LoginResponseStrategy()
+        class TestLoginResponseStrategy(LoginResponseStrategy):
+            def handle_response(self, tokens):
+                return None
+        
+        strategy = TestLoginResponseStrategy()
         
         self.assertIsInstance(strategy, LoginResponseStrategy)
         
