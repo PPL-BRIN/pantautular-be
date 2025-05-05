@@ -1,9 +1,20 @@
 from rest_framework.response import Response
 from rest_framework import status
+from abc import ABC, abstractmethod
 
-class LoginResponseStrategy:
+class LoginResponseStrategy(ABC):
+    @abstractmethod
     def handle_response(self, tokens):
-        pass
+        """
+        Handle the response for a login attempt.
+        
+        Args:
+            tokens: Dictionary containing authentication tokens or error messages
+            
+        Returns:
+            Response: A DRF Response object with appropriate status code and data
+        """
+        pass # pragma: no cover
 
 class SuccessfulLoginStrategy(LoginResponseStrategy):
     def handle_response(self, tokens):
