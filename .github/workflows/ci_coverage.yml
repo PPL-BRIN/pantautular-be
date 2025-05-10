@@ -28,7 +28,7 @@ jobs:
         python manage.py migrate
     - name: Run tests and collect coverage
       run: |
-        coverage run --source=pt_backend --source=authentication manage.py test pt_backend authentication
+        coverage run manage.py test
         coverage xml -o coverage.xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
