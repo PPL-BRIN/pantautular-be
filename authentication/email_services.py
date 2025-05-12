@@ -19,17 +19,17 @@ class EmailContentStrategy(ABC):
     @abstractmethod
     def get_subject(self):
         """Get the email subject line"""
-        pass
+        pass  # pragma: no cover
     
     @abstractmethod
     def get_template_name(self):
         """Get the template name for this email type"""
-        pass
+        pass  # pragma: no cover
     
     @abstractmethod
     def get_context_data(self, **kwargs):
         """Get the template context data"""
-        pass
+        pass  # pragma: no cover
 
 class PasswordResetEmailStrategy(EmailContentStrategy):
     """Strategy for password reset emails"""
@@ -54,7 +54,7 @@ class EmailProvider(ABC):
     @abstractmethod
     def send_email(self, recipient_email, subject, template_name, context):
         """Send an email with the given subject, template and context"""
-        pass
+        pass # pragma: no cover
 
 # Concrete email providers
 class BrevoEmailProvider(EmailProvider):
