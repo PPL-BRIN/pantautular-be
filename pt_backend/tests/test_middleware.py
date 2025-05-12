@@ -98,19 +98,19 @@ class SentryContextMiddlewareTests(TestCase):
         ip = self.middleware._get_client_ip(request)
         
         # Verify - should get the first IP in the list
-        self.assertEqual(ip, '192.168.1.1')
+        self.assertEqual(ip, '192.168.1.1') # NOSONAR - test data, not a real secret
     
     def test_get_client_ip_without_x_forwarded_for(self):
         """Test _get_client_ip method falls back to REMOTE_ADDR when X-Forwarded-For is missing"""
         # Setup
         request = self.factory.get('/test-path')
-        request.META['REMOTE_ADDR'] = '192.168.1.2'
+        request.META['REMOTE_ADDR'] = '192.168.1.2' # NOSONAR - test data, not a real secret
         
         # Execute
         ip = self.middleware._get_client_ip(request)
         
         # Verify
-        self.assertEqual(ip, '192.168.1.2')
+        self.assertEqual(ip, '192.168.1.2') # NOSONAR - test data, not a real secret
     
     def test_get_client_ip_with_no_ip_information(self):
         """Test _get_client_ip method returns 'unknown' when no IP info is available"""
