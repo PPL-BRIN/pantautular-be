@@ -15,6 +15,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 from datetime import timedelta
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,6 +38,20 @@ DEBUG = False
 PASSWORD_RESET_TIMEOUT = 60 * 15  # 15 menit (default)
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1",".up.railway.app"]
+
+sentry_sdk.init(
+    dsn="https://074fefc8a744088ef3324468d9564ddb@o4509310019108864.ingest.us.sentry.io/4509310020747264",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for tracing.
+    traces_sample_rate=1.0,
+    # Set profile_session_sample_rate to 1.0 to profile 100%
+    # of profile sessions.
+    profile_session_sample_rate=1.0,
+    # Set profile_lifecycle to "trace" to automatically
+    # run the profiler on when there is an active transaction
+    profile_lifecycle="trace"
+)
+
 
 # Application definition
 
