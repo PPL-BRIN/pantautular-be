@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from authentication.email_services import EmailService, PasswordResetEmailStrategy
+from sentry_sdk import capture_exception, set_tag
 
 import os
 import logging
@@ -255,43 +256,53 @@ class AuthService:
             None: If authentication fails
             dict with 'locked' key: If account is locked
         """
-        # Check if account is locked
-        is_locked, remaining_time = self.check_account_locked(email)
-        if is_locked:
-            minutes = remaining_time // 60
-            seconds = remaining_time % 60
-            time_msg = f"{minutes} minutes and {seconds} seconds" if minutes else f"{seconds} seconds"
-            return {
-                'locked': True,
-                'message': f"Account is locked due to too many failed attempts. Try again in {time_msg}."
-            }
+        try:
+            # Check if account is locked
+            is_locked, remaining_time = self.check_account_locked(email)
+            if is_locked:
+                minutes = remaining_time // 60
+                seconds = remaining_time % 60
+                time_msg = f"{minutes} minutes and {seconds} seconds" if minutes else f"{seconds} seconds"
+                return {
+                    'locked': True,
+                    'message': f"Account is locked due to too many failed attempts. Try again in {time_msg}."
+                }
+                
+            # Get user by email
+            user = self.user_repository.get_user_by_email(email)
             
-        # Get user by email
-        user = self.user_repository.get_user_by_email(email)
+            if not user:
+                # Increment failed attempts even for non-existent emails to prevent enumeration
+                self.increment_failed_attempts(email)
+                set_tag("auth.status", "failed")
+                return None
+            
+            # Check password
+            if not check_password(password, user.password):
+                self.increment_failed_attempts(email)
+                set_tag("auth.status", "failed")
+                return None
+            
+            # Successful login, reset failed attempts
+            self.reset_failed_attempts(email)
+            
+            # Generate token with user data in payload
+            refresh = RefreshToken.for_user(user)
+
+            # Set success tag for tracking
+            set_tag("auth.status", "success")                
+            
+            # Menambahkan data user ke payload token
+            refresh['name'] = user.name
+            refresh['email'] = user.email
+            refresh['role'] = user.role
+            refresh['user_id'] = user.id
+            
+            # Hanya mengembalikan token
+            return {
+                "access_token": str(refresh.access_token)
+            }
         
-        if not user:
-            # Increment failed attempts even for non-existent emails to prevent enumeration
-            self.increment_failed_attempts(email)
-            return None
-        
-        # Check password
-        if not check_password(password, user.password):
-            self.increment_failed_attempts(email)
-            return None
-        
-        # Successful login, reset failed attempts
-        self.reset_failed_attempts(email)
-        
-        # Generate token with user data in payload
-        refresh = RefreshToken.for_user(user)
-        
-        # Menambahkan data user ke payload token
-        refresh['name'] = user.name
-        refresh['email'] = user.email
-        refresh['role'] = user.role
-        refresh['user_id'] = user.id
-        
-        # Hanya mengembalikan token
-        return {
-            "access_token": str(refresh.access_token)
-        }
+        except Exception as e:
+            capture_exception(e)
+            raise
