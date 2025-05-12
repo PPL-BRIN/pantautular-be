@@ -207,7 +207,7 @@ class AuthServiceExceptionHandlingTests(TestCase):
             id=1,
             name='Test User',
             email='test@example.com',
-            password=make_password('Password123!'),
+            password=make_password('Password123!'), # NOSONAR – test data, not a real secret
             role='TENAGA_AHLI'
         )
 
