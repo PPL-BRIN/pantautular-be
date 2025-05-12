@@ -223,7 +223,7 @@ class TestEmailService(TestCase):
         """Test Brevo provider handling of ApiException"""
         # Create mocks
         with patch('authentication.email_services.sib_api_v3_sdk.Configuration') as mock_config:
-            with patch('authentication.email_services.ApiClient') as mock_client:
+            with patch('authentication.email_services.ApiClient'):
                 with patch('authentication.email_services.TransactionalEmailsApi') as mock_api:
                     with patch('authentication.email_services.logger.error') as mock_logger:
                         # Setup configuration

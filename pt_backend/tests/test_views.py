@@ -88,6 +88,28 @@ class CaseAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.json(), {"detail": "Invalid API Key"})
 
+    @patch('pt_backend.filter.service.CaseFilterService.filter_cases')
+    @patch('pt_backend.views.API_ERRORS.labels')
+    def test_post_filter_exception(self, mock_labels, mock_filter_cases):
+        """Test exception handling in POST method when filter_cases raises an exception"""
+        # Setup the mocks
+        mock_filter_cases.side_effect = Exception("Test filter exception")
+        mock_labels_instance = Mock()
+        mock_labels.return_value = mock_labels_instance
+        
+        # Make the request with some filter data
+        url = reverse('all-case-locations')
+        data = {"provinces": ["DKI Jakarta"]}
+        response = self.client.post(url, data, format='json')
+        
+        # Verify the response
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.data, {"error": "An unexpected error occurred. Please try again later."})
+        
+        # Verify error was logged to metrics
+        mock_labels.assert_called_once_with(error_type='case_filter_error')
+        mock_labels_instance.inc.assert_called_once()
+
     @patch('pt_backend.services.CaseService.get_all_case_locations')
     def test_all_case_locations_get_exception(self, mock_get_locations):
         mock_get_locations.side_effect = Exception("Test exception")      
@@ -112,7 +134,7 @@ class CaseAPITest(TestCase):
         mock_get_locations.assert_called_once()
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data, {"error": "No cases found with the given filters"})
-       
+
 class CaseFilterPostTest(TestCase):
     def setUp(self):
         self.client = APIClient()
