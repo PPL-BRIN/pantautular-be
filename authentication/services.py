@@ -247,6 +247,9 @@ class AuthService:
         cache_key = self._get_lockout_cache_key(email)
         cache.delete(cache_key)
     
+    # Constants for auth status tagging
+    AUTH_STATUS_TAG = "auth.status"
+    
     def login(self, email, password):
         """
         Authenticate user and generate tokens
@@ -274,13 +277,13 @@ class AuthService:
             if not user:
                 # Increment failed attempts even for non-existent emails to prevent enumeration
                 self.increment_failed_attempts(email)
-                set_tag("auth.status", "failed")
+                set_tag(self.AUTH_STATUS_TAG, "failed")
                 return None
             
             # Check password
             if not check_password(password, user.password):
                 self.increment_failed_attempts(email)
-                set_tag("auth.status", "failed")
+                set_tag(self.AUTH_STATUS_TAG, "failed")
                 return None
             
             # Successful login, reset failed attempts
@@ -290,7 +293,7 @@ class AuthService:
             refresh = RefreshToken.for_user(user)
 
             # Set success tag for tracking
-            set_tag("auth.status", "success")                
+            set_tag(self.AUTH_STATUS_TAG, "success")                
             
             # Menambahkan data user ke payload token
             refresh['name'] = user.name
