@@ -1,6 +1,6 @@
 from django.test import TestCase, override_settings
 from django.contrib.auth.hashers import make_password
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from django.utils import timezone
 from authentication.services import AuthService
 from pt_backend.models import User
@@ -194,3 +194,62 @@ class AuthServiceTests(TestCase):
         
         self.assertIsNotNone(cached_data)
         self.assertEqual(cached_data.get('attempts'), 3)
+
+    
+class AuthServiceExceptionHandlingTests(TestCase):
+    def setUp(self):
+        # Create mock repository
+        self.mock_repository = MagicMock()
+        self.auth_service = AuthService(self.mock_repository)
+        
+        # Create a test user object
+        self.test_user = User(
+            id=1,
+            name='Test User',
+            email='test@example.com',
+            password=make_password('Password123!'),
+            role='TENAGA_AHLI'
+        )
+
+    @patch('authentication.services.capture_exception')
+    def test_login_captures_exceptions_with_sentry(self, mock_capture_exception):
+        """Test that exceptions during login are captured by Sentry"""
+        # Configure repository to raise an exception
+        self.mock_repository.get_user_by_email.side_effect = Exception("Database connection error")
+        
+        # Call the login method and expect it to raise the exception
+        with self.assertRaises(Exception) as context:
+            self.auth_service.login('test@example.com', 'Password123!')
+        
+        # Verify the exception message
+        self.assertEqual(str(context.exception), "Database connection error")
+        
+        # Verify that capture_exception was called with the exception
+        mock_capture_exception.assert_called_once()
+        args, _ = mock_capture_exception.call_args
+        self.assertEqual(str(args[0]), "Database connection error")
+
+    @patch('authentication.services.RefreshToken.for_user')
+    @patch('authentication.services.capture_exception')
+    def test_login_captures_token_generation_exceptions(self, mock_capture_exception, mock_for_user):
+        """Test that exceptions during token generation are captured by Sentry"""
+        # Configure user repository to return a valid user
+        self.mock_repository.get_user_by_email.return_value = self.test_user
+        
+        # Configure the token generation to raise an exception
+        mock_for_user.side_effect = Exception("Token generation failed")
+        
+        # Call the login method and expect it to raise the exception
+        with self.assertRaises(Exception) as context:
+            self.auth_service.login('test@example.com', 'Password123!')
+        
+        # Verify the exception message
+        self.assertEqual(str(context.exception), "Token generation failed")
+        
+        # Verify that capture_exception was called with the exception
+        mock_capture_exception.assert_called_once()
+        args, _ = mock_capture_exception.call_args
+        self.assertEqual(str(args[0]), "Token generation failed")
+        
+        # Verify the user was retrieved
+        self.mock_repository.get_user_by_email.assert_called_once_with('test@example.com')
