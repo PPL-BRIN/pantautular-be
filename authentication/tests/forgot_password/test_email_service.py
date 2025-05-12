@@ -1,7 +1,7 @@
 from django.template import TemplateDoesNotExist
 from django.test import TestCase
 from unittest.mock import patch, MagicMock
-from django.core.mail import EmailMultiAlternatives
+from sib_api_v3_sdk.rest import ApiException
 
 from authentication.email_services import (
     EmailContentStrategy, PasswordResetEmailStrategy, 
@@ -219,6 +219,46 @@ class TestEmailService(TestCase):
                     # Verify API key was set
                     self.assertEqual(mock_config_instance.api_key, {'api-key': 'test-key'})
     
+    def test_brevo_provider_api_exception(self):
+        """Test Brevo provider handling of ApiException"""
+        # Create mocks
+        with patch('authentication.email_services.sib_api_v3_sdk.Configuration') as mock_config:
+            with patch('authentication.email_services.ApiClient') as mock_client:
+                with patch('authentication.email_services.TransactionalEmailsApi') as mock_api:
+                    with patch('authentication.email_services.logger.error') as mock_logger:
+                        # Setup configuration
+                        mock_config_instance = MagicMock()
+                        mock_config_instance.api_key = {}
+                        mock_config.return_value = mock_config_instance
+                        
+                        # Setup API instance
+                        mock_api_instance = MagicMock()
+                        mock_api.return_value = mock_api_instance
+                        
+                        # Make send_transac_email raise an ApiException
+                        api_exception = ApiException(status=400, reason="Bad Request")
+                        mock_api_instance.send_transac_email.side_effect = api_exception
+                        
+                        provider = BrevoEmailProvider(api_key="test-key")
+                        
+                        # The ApiException should be re-raised
+                        with self.assertRaises(ApiException) as context:
+                            provider.send_email(
+                                recipient_email="test@example.com",
+                                subject="Test Subject",
+                                template_name="test_template.html",
+                                context={"key": "value"}
+                            )
+                        
+                        # Verify the exception is the same one we created
+                        self.assertEqual(context.exception, api_exception)
+                        
+                        # Verify that the error was logged with the correct message
+                        mock_logger.assert_called_once()
+                        # Check that the log message contains "Exception when calling TransactionalEmailsApi"
+                        self.assertIn("Exception when calling TransactionalEmailsApi", 
+                                    mock_logger.call_args[0][0])
+
     def test_django_provider(self):
         """Test Django provider specifics"""
         with patch('authentication.email_services.render_to_string') as mock_render:
@@ -254,3 +294,32 @@ class TestEmailService(TestCase):
                     template_name="nonexistent_template.html",
                     context={}
                 )
+
+    def test_django_provider_send_failure(self):
+        """Test Django provider handling of send failures"""
+        with patch('authentication.email_services.render_to_string') as mock_render:
+            with patch('authentication.email_services.EmailMultiAlternatives.send') as mock_send:
+                with patch('authentication.email_services.logger.error') as mock_logger:
+                    # Setup mock to render HTML
+                    mock_render.return_value = "<html>Test Email</html>"
+                    
+                    # Make send() raise an exception
+                    test_exception = Exception("SMTP server disconnected")
+                    mock_send.side_effect = test_exception
+                    
+                    provider = DjangoEmailProvider(from_email="test@example.com")
+                    
+                    # The exception should be re-raised
+                    with self.assertRaises(Exception) as context:
+                        provider.send_email(
+                            recipient_email="recipient@example.com",
+                            subject="Test Subject",
+                            template_name="test_template.html",
+                            context={"reset_link": "https://example.com/reset"}
+                        )
+                    
+                    # Verify the exception is the same one we created
+                    self.assertEqual(context.exception, test_exception)
+                    
+                    # Verify that the error was logged
+                    mock_logger.assert_called_with("Failed to send email: SMTP server disconnected")
