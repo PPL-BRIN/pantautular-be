@@ -28,7 +28,7 @@ jobs:
         python manage.py migrate
     - name: Run tests and collect coverage
       run: |
-        coverage run manage.py test
+        coverage run --rcfile=.coveragerc manage.py test
         coverage xml -o coverage.xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

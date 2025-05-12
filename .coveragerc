@@ -3,11 +3,11 @@ source =
     authentication
     pt_backend
 omit = 
-    *\payload_scanner.py
-    *\grafana_config.py
-    *\tests\*
+    **/payload_scanner.py
+    **/grafana_config.py
+    **/tests/*
 
 [report]
 exclude_lines =
-    if __name__ == .__main__.:
+    if __name__ == "__main__":
     pragma: no cover
