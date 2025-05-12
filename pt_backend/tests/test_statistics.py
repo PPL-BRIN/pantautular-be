@@ -65,21 +65,11 @@ class PrevalenceStatisticsTest(BaseStatisticsTestCase):
         super().setUp()
         self.repository = CaseRepository()
         self.statistics = PrevalenceStatistics(self.repository)
-
-    def test_get_prevalence_statistics_default_year(self):
-        """Test getting prevalence statistics with default year"""
-        result = self.statistics.get_prevalence_statistics()
-        
-        self.assertEqual(result["year"], 2024)
-        self.assertEqual(result["total_cases"], 0)
-        self.assertIsInstance(result["population"], int)
-        self.assertIsInstance(result["prevalence"], float)
-
-    def test_get_prevalence_statistics_with_start_date(self):
-        """Test getting prevalence statistics with a specific start date"""
-        # Create a case with a specific year
-        specific_date = timezone.make_aware(datetime(2023, 1, 1))
-        case_2023 = Case.objects.create(
+    
+    def _create_case_for_year(self, year):
+        """Helper method to create a test case for the specified year"""
+        specific_date = timezone.make_aware(datetime(year, 1, 1))
+        case = Case.objects.create(
             id=uuid.uuid4(),
             gender="Pria",
             age=30,
@@ -93,14 +83,30 @@ class PrevalenceStatisticsTest(BaseStatisticsTestCase):
         News.objects.create(
             id=uuid.uuid4(),
             portal="Test Portal",
-            title="2023 Case",
+            title=f"{year} Case",
             type="Test Type",
-            content="2023 case content",
-            url="https://test.com/2023",
+            content=f"{year} case content",
+            url=f"https://test.com/{year}",
             author="Test Author",
             date_published=specific_date,
-            case=case_2023
+            case=case
         )
+        
+        return case
+
+    def test_get_prevalence_statistics_default_year(self):
+        """Test getting prevalence statistics with default year"""
+        result = self.statistics.get_prevalence_statistics()
+        
+        self.assertEqual(result["year"], 2024)
+        self.assertEqual(result["total_cases"], 0)
+        self.assertIsInstance(result["population"], int)
+        self.assertIsInstance(result["prevalence"], float)
+
+    def test_get_prevalence_statistics_with_start_date(self):
+        """Test getting prevalence statistics with a specific start date"""
+        # Create a case for 2023
+        self._create_case_for_year(2023)
         
         result = self.statistics.get_prevalence_statistics("2023-01-01")
         
@@ -151,33 +157,10 @@ class PrevalenceStatisticsTest(BaseStatisticsTestCase):
     
     def test_get_prevalence_statistics_with_iso_date_format(self):
         """Test getting prevalence statistics with ISO format date string (contains 'T')"""
-        # Create a case with a specific year
-        specific_date = timezone.make_aware(datetime(2023, 1, 1))
-        case_2023 = Case.objects.create(
-            id=uuid.uuid4(),
-            gender="Pria",
-            age=30,
-            city="Test City",
-            status="terjangkit",
-            severity="hospitalisasi",
-            disease=self.disease,
-            location=self.location
-        )
-        
-        News.objects.create(
-            id=uuid.uuid4(),
-            portal="Test Portal",
-            title="2023 Case",
-            type="Test Type",
-            content="2023 case content",
-            url="https://test.com/2023",
-            author="Test Author",
-            date_published=specific_date,
-            case=case_2023
-        )
+        # Create a case for 2023
+        self._create_case_for_year(2023)
         
         # Test with an ISO format date string (includes 'T')
-        # This will test the 'if 'T' in start_date:' branch
         result = self.statistics.get_prevalence_statistics("2023-01-01T12:00:00.000Z")
         
         # Verify the correct year was extracted from the ISO format
