@@ -153,3 +153,132 @@ class ChangePasswordViewTest(TestCase):
             # Check response
             self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
             self.assertIn('error', response.data)
+    
+    def test_missing_authorization_header(self):
+        """Test when Authorization header is missing"""
+        # Set only API key, remove Authorization header
+        self.client.credentials(HTTP_X_API_KEY='test-api-key')
+        
+        data = {
+            'current_password': 'current_password',
+            'new_password': 'new_secure_password',
+            'confirm_password': 'new_secure_password'
+        }
+        
+        response = self.client.post(self.url, data, format='json')
+        
+        # Check response
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['error'], "Authentication token required")
+
+    def test_malformed_authorization_header(self):
+        """Test when Authorization header is malformed"""
+        # Set malformed Authorization header
+        self.client.credentials(
+            HTTP_X_API_KEY='test-api-key',
+            HTTP_AUTHORIZATION='InvalidFormat token123'
+        )
+        
+        data = {
+            'current_password': 'current_password',
+            'new_password': 'new_secure_password',
+            'confirm_password': 'new_secure_password'
+        }
+        
+        response = self.client.post(self.url, data, format='json')
+        
+        # Check response
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['error'], "Authentication token required")
+
+    def test_missing_user_id_in_token(self):
+        """Test when token does not contain user_id"""
+        # Create token without user_id
+        token = jwt.encode(
+            {'some_field': 'some_value'},  # No user_id field
+            settings.SECRET_KEY,
+            algorithm='HS256'
+        )
+        
+        self.client.credentials(
+            HTTP_X_API_KEY='test-api-key',
+            HTTP_AUTHORIZATION=f'Bearer {token}'
+        )
+        
+        data = {
+            'current_password': 'current_password',
+            'new_password': 'new_secure_password',
+            'confirm_password': 'new_secure_password'
+        }
+        
+        response = self.client.post(self.url, data, format='json')
+        
+        # Check response
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['error'], "Invalid token")
+
+    def test_expired_token(self):
+        """Test with an expired token"""
+        # Use patch to simulate an ExpiredSignatureError
+        with patch('jwt.decode') as mock_decode:
+            mock_decode.side_effect = jwt.ExpiredSignatureError()
+            
+            data = {
+                'current_password': 'current_password',
+                'new_password': 'new_secure_password',
+                'confirm_password': 'new_secure_password'
+            }
+            
+            response = self.client.post(self.url, data, format='json')
+            
+            # Check response
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+            self.assertEqual(response.data['error'], "Token expired")
+
+    def test_invalid_token(self):
+        """Test with an invalid token"""
+        # Use patch to simulate an InvalidTokenError
+        with patch('jwt.decode') as mock_decode:
+            mock_decode.side_effect = jwt.InvalidTokenError()
+            
+            data = {
+                'current_password': 'current_password',
+                'new_password': 'new_secure_password',
+                'confirm_password': 'new_secure_password'
+            }
+            
+            response = self.client.post(self.url, data, format='json')
+            
+            # Check response
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+            self.assertEqual(response.data['error'], "Invalid token")
+
+    def test_user_does_not_exist(self):
+        """Test when user from token does not exist"""
+        # Create token with non-existent user ID
+        token = jwt.encode(
+            {'user_id': '00000000-0000-0000-0000-000000000000'},  # Non-existent UUID
+            settings.SECRET_KEY,
+            algorithm='HS256'
+        )
+        
+        self.client.credentials(
+            HTTP_X_API_KEY='test-api-key',
+            HTTP_AUTHORIZATION=f'Bearer {token}'
+        )
+        
+        data = {
+            'current_password': 'current_password',
+            'new_password': 'new_secure_password',
+            'confirm_password': 'new_secure_password'
+        }
+        
+        # Patch User.objects.get to raise User.DoesNotExist directly
+        with patch('pt_backend.models.User.objects.get') as mock_get:
+            mock_get.side_effect = User.DoesNotExist("User not found")
+            
+            response = self.client.post(self.url, data, format='json')
+            
+            # Check response
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+            self.assertEqual(response.data['error'], "User not found")
