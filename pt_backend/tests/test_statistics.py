@@ -65,21 +65,11 @@ class PrevalenceStatisticsTest(BaseStatisticsTestCase):
         super().setUp()
         self.repository = CaseRepository()
         self.statistics = PrevalenceStatistics(self.repository)
-
-    def test_get_prevalence_statistics_default_year(self):
-        """Test getting prevalence statistics with default year"""
-        result = self.statistics.get_prevalence_statistics()
-        
-        self.assertEqual(result["year"], 2024)
-        self.assertEqual(result["total_cases"], 0)
-        self.assertIsInstance(result["population"], int)
-        self.assertIsInstance(result["prevalence"], float)
-
-    def test_get_prevalence_statistics_with_start_date(self):
-        """Test getting prevalence statistics with a specific start date"""
-        # Create a case with a specific year
-        specific_date = timezone.make_aware(datetime(2023, 1, 1))
-        case_2023 = Case.objects.create(
+    
+    def _create_case_for_year(self, year):
+        """Helper method to create a test case for the specified year"""
+        specific_date = timezone.make_aware(datetime(year, 1, 1))
+        case = Case.objects.create(
             id=uuid.uuid4(),
             gender="Pria",
             age=30,
@@ -93,14 +83,30 @@ class PrevalenceStatisticsTest(BaseStatisticsTestCase):
         News.objects.create(
             id=uuid.uuid4(),
             portal="Test Portal",
-            title="2023 Case",
+            title=f"{year} Case",
             type="Test Type",
-            content="2023 case content",
-            url="https://test.com/2023",
+            content=f"{year} case content",
+            url=f"https://test.com/{year}",
             author="Test Author",
             date_published=specific_date,
-            case=case_2023
+            case=case
         )
+        
+        return case
+
+    def test_get_prevalence_statistics_default_year(self):
+        """Test getting prevalence statistics with default year"""
+        result = self.statistics.get_prevalence_statistics()
+        
+        self.assertEqual(result["year"], 2024)
+        self.assertEqual(result["total_cases"], 0)
+        self.assertIsInstance(result["population"], int)
+        self.assertIsInstance(result["prevalence"], float)
+
+    def test_get_prevalence_statistics_with_start_date(self):
+        """Test getting prevalence statistics with a specific start date"""
+        # Create a case for 2023
+        self._create_case_for_year(2023)
         
         result = self.statistics.get_prevalence_statistics("2023-01-01")
         
@@ -148,6 +154,20 @@ class PrevalenceStatisticsTest(BaseStatisticsTestCase):
         self.assertEqual(result["year"], 2023)
         self.assertEqual(result["total_cases"], 0)
         self.assertEqual(result["population"], 278696200)
+    
+    def test_get_prevalence_statistics_with_iso_date_format(self):
+        """Test getting prevalence statistics with ISO format date string (contains 'T')"""
+        # Create a case for 2023
+        self._create_case_for_year(2023)
+        
+        # Test with an ISO format date string (includes 'T')
+        result = self.statistics.get_prevalence_statistics("2023-01-01T12:00:00.000Z")
+        
+        # Verify the correct year was extracted from the ISO format
+        self.assertEqual(result["year"], 2023)
+        self.assertEqual(result["total_cases"], 1)
+        self.assertEqual(result["population"], 278696200)
+        self.assertIsInstance(result["prevalence"], float)
 
 class TestSeverityGroupingReport(unittest.TestCase):
     def setUp(self):
@@ -1252,3 +1272,54 @@ class TestAverageSeverityByProvince(unittest.TestCase):
         result = self.analyzer.compute()
         
         self.assertEqual(result, [])
+    
+    def test_quartile_classification(self):
+        """Test that scores are properly classified based on quartiles"""
+        # Use exact province names that match the keys in PROVINCE_TO_CODE
+        # Create mock data with carefully selected values that will produce
+        # scores in each of the four quartile ranges
+        mock_data = [
+            # First province - lowest score (minimal)
+            {"status": "minimal", "location__province": "Aceh"},
+            
+            # Second province - second quartile (biasa)
+            {"status": "biasa", "location__province": "Bali"},
+            {"status": "biasa", "location__province": "Bali"},
+            
+            # Third province - third quartile (bahaya)
+            {"status": "bahaya", "location__province": "DKI Jakarta"},  # Changed from "Jakarta"
+            {"status": "bahaya", "location__province": "DKI Jakarta"},
+            {"status": "bahaya", "location__province": "DKI Jakarta"},
+            
+            # Fourth province - highest quartile (katastropik)
+            {"status": "katastropik", "location__province": "Papua"},
+            {"status": "katastropik", "location__province": "Papua"},
+            {"status": "katastropik", "location__province": "Papua"},
+            {"status": "katastropik", "location__province": "Papua"},
+        ]
+        self.case_service.get_status_and_province.return_value = mock_data
+
+        result = self.analyzer.compute()
+        
+        # Sort results by value to check classifications
+        sorted_results = sorted(result, key=lambda x: x["value"])
+        
+        # There should be 4 provinces
+        self.assertEqual(len(sorted_results), 4)
+        
+        # Verify each province gets the correct status
+        # Province with lowest score (Aceh)
+        self.assertEqual(sorted_results[0]["id"], "ID-AC")
+        self.assertEqual(sorted_results[0]["status"], "minimal")
+        
+        # Province with second lowest score (Bali) 
+        self.assertEqual(sorted_results[1]["id"], "ID-BA")
+        self.assertEqual(sorted_results[1]["status"], "biasa")
+        
+        # Province with second highest score (Jakarta)
+        self.assertEqual(sorted_results[2]["id"], "ID-JK")
+        self.assertEqual(sorted_results[2]["status"], "bahaya")
+        
+        # Province with highest score (Papua)
+        self.assertEqual(sorted_results[3]["id"], "ID-PA")
+        self.assertEqual(sorted_results[3]["status"], "katastropik")

@@ -74,7 +74,6 @@ class BaseCaseDetailTest(TestCase):
         self.assertEqual(result["news"][0]["title"], "Test News")
         self.assertEqual(result["health_protocols"][0]["title"], "Test Protocol")
 
-
 class CaseDetailFormatterTest(BaseCaseDetailTest):
     def setUp(self):
         super().setUp()
@@ -188,6 +187,32 @@ class CaseDetailServiceTest(BaseCaseDetailTest):
 
     def test_generate_related_search_with_none(self):
         self.assertIsNone(self.service._generate_related_search(None))
+    
+    def test_get_case_detail_exception_during_processing(self):
+        """Test exception handling during case data processing"""
+        # Set up mocks
+        self.cache_service.get.return_value = None
+        mock_case = self._create_mock_case()
+        self.repository.get_case_detail_by_id.return_value = mock_case
+        
+        # Make one of the formatting operations raise an exception
+        # We'll make the gender_formatter fail
+        self.service.gender_formatter.format = Mock(side_effect=Exception("Formatter failure"))
+        
+        # The method should catch the exception and re-raise it
+        with self.assertRaises(Exception) as context:
+            self.service.get_case_detail(self.case_id)
+        
+        # Verify the exception message
+        self.assertIn("Formatter failure", str(context.exception))
+        
+        # Make sure we called the right methods
+        self.cache_service.get.assert_called_once()
+        self.repository.get_case_detail_by_id.assert_called_once()
+        self.service.gender_formatter.format.assert_called_once()
+        
+        # Cache should not be set due to the exception
+        self.cache_service.set.assert_not_called()
 
 
 class CaseRepositoryTest(BaseCaseDetailTest):

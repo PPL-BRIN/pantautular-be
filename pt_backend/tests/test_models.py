@@ -38,6 +38,14 @@ class UserModelTest(TestCase):
 
     def test_str_representation(self):
         self.assertEqual(str(self.user), "Test User")
+    
+    def test_get_username(self):
+        """Test that get_username returns the user's email"""
+        self.assertEqual(self.user.get_username(), "test@example.com")
+
+    def test_get_email_field_name(self):
+        """Test that get_email_field_name returns 'email'"""
+        self.assertEqual(self.user.get_email_field_name(), "email")
 
 class RoleModelTest(TestCase):
     def setUp(self):

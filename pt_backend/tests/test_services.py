@@ -201,6 +201,67 @@ class TestCaseService(unittest.TestCase):
         self.mock_cache.set.assert_called_once_with("status_province", repo_data, timeout=300)
         self.assertEqual(result, repo_data)
 
+    def test_get_all_case_locations_cache_hit(self):
+        """
+        Test get_all_case_locations when data is in the cache.
+        The service should return cached data without calling the repository.
+        """
+        cached_locations = [
+            {
+                "id": "1",
+                "province": "TestProvince",
+                "city": "TestCity"
+            }
+        ]
+        self.mock_cache.get.return_value = cached_locations
+
+        result = self.service.get_all_case_locations()
+
+        # Verify cache was checked with the correct key
+        self.mock_cache.get.assert_called_once_with("all_locations")
+        # Repository should not be called when cache has data
+        self.mock_repository.get_all_locations.assert_not_called()
+        self.assertEqual(result, cached_locations)
+
+    def test_get_all_case_locations_cache_miss_repository_returns_data(self):
+        """
+        Test get_all_case_locations when cache is empty but repository returns data.
+        The service should cache the data and return it.
+        """
+        repository_locations = [
+            {
+                "id": "2",
+                "province": "RepoProvince",
+                "city": "RepoCity"
+            }
+        ]
+        self.mock_cache.get.return_value = None
+        self.mock_repository.get_all_locations.return_value = repository_locations
+
+        result = self.service.get_all_case_locations()
+
+        self.mock_cache.get.assert_called_once_with("all_locations")
+        self.mock_repository.get_all_locations.assert_called_once()
+        # Verify that retrieved data is cached with correct timeout
+        self.mock_cache.set.assert_called_once_with("all_locations", repository_locations, timeout=300)
+        self.assertEqual(result, repository_locations)
+
+    def test_get_all_case_locations_cache_miss_repository_returns_none(self):
+        """
+        Test get_all_case_locations when both cache and repository return None.
+        The service should return an empty list.
+        """
+        self.mock_cache.get.return_value = None
+        self.mock_repository.get_all_locations.return_value = None
+
+        result = self.service.get_all_case_locations()
+
+        self.mock_cache.get.assert_called_once_with("all_locations")
+        self.mock_repository.get_all_locations.assert_called_once()
+        self.mock_cache.set.assert_called_once_with("all_locations", None, timeout=300)
+        # Should return empty list when no data is available
+        self.assertEqual(result, [])
+
 class TestCacheService(TestCase):
     def setUp(self):
         self.cache_service = CacheService()

@@ -30,7 +30,7 @@ class CaseRepositoryInterface(ABC):
 
     @abstractmethod
     def get_status_and_province(self):
-        pass
+        pass # pragma: no cover
 
 class CacheInterface(ABC):
     @abstractmethod
@@ -39,7 +39,7 @@ class CacheInterface(ABC):
 
     @abstractmethod
     def set(self, key, value, timeout):
-        pass # pragma:  no cover
+        pass # pragma: no cover
 
     @abstractmethod
     def delete(self, key):
