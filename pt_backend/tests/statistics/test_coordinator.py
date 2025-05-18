@@ -66,3 +66,126 @@ class TestStatisticsCoordinator(TestCase):
         self.assertIn("age_statistics", out)
         self.assertEqual(captured, [[]])
         self.assertEqual(out["age_statistics"], {"ok": True})
+    
+    def test_caching_functionality(self):
+        """Test that caching works correctly when cache_service is provided"""
+        # Create a mock cache service
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None  # First call returns cache miss
+        
+        # Create coordinator with cache service
+        coord_with_cache = StatisticsCoordinator(
+            case_filter_service=self.mock_filter,
+            cache_service=mock_cache
+        )
+        
+        # First call should try to get from cache, miss, and then set cache
+        result1 = coord_with_cache.generate_comprehensive_report(disease=["COVID-19"])
+        
+        # Verify cache interactions
+        mock_cache.get.assert_called_once()
+        mock_cache.set.assert_called_once()
+        
+        # Reset mock call counts for next test
+        mock_cache.get.reset_mock()
+        mock_cache.set.reset_mock()
+        
+        # Set up mock to return cached result for second call
+        cached_result = {"cached": "result"}
+        mock_cache.get.return_value = cached_result
+        
+        # Second call with same params should get cache hit
+        result2 = coord_with_cache.generate_comprehensive_report(disease=["COVID-19"])
+        
+        # Verify cache get was called but not set
+        mock_cache.get.assert_called_once()
+        mock_cache.set.assert_not_called()
+        
+        # Result should be the cached value
+        self.assertEqual(result2, cached_result)
+
+    def test_cache_handles_unhashable_types(self):
+        """Test that the coordinator correctly handles unhashable types in filters"""
+        # Create mock cache service
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None
+        
+        # Create coordinator with cache service
+        coord_with_cache = StatisticsCoordinator(
+            case_filter_service=self.mock_filter,
+            cache_service=mock_cache
+        )
+        
+        # Call with complex filters containing lists and dicts
+        complex_filters = {
+            "diseases": ["COVID-19", "Dengue"],
+            "locations": {
+                "provinces": ["Jakarta", "Bali"],
+                "cities": ["Jakarta Selatan"]
+            }
+        }
+        
+        # This should not raise an unhashable type error
+        result = coord_with_cache.generate_comprehensive_report(**complex_filters)
+        
+        # Verify result is not an error
+        self.assertNotIn("error", result)
+        
+        # Verify cache was attempted
+        mock_cache.get.assert_called_once()
+        mock_cache.set.assert_called_once()
+
+    def test_cache_get_exception_handled(self):
+        """Test that exceptions during cache retrieval are properly handled"""
+        # Create mock cache service that raises exception on get
+        mock_cache = MagicMock()
+        mock_cache.get.side_effect = Exception("Cache retrieval error")
+        
+        # Create coordinator with problematic cache service
+        coord_with_cache = StatisticsCoordinator(
+            case_filter_service=self.mock_filter,
+            cache_service=mock_cache
+        )
+        
+        # This should not raise an exception, the error should be caught
+        try:
+            result = coord_with_cache.generate_comprehensive_report(disease=["COVID-19"])
+            
+            # Verify cache get was attempted
+            mock_cache.get.assert_called_once()
+            
+            # Coordinator should fall back to non-cached behavior
+            self.mock_filter.filter_cases.assert_called_once()
+            
+            # We should still get a result, not an error
+            self.assertTrue(isinstance(result, dict))
+            self.assertNotIn("error", result)
+        except Exception as e:
+            self.fail(f"Exception was not properly handled: {str(e)}")
+
+    def test_cache_set_exception_handled(self):
+        """Test that exceptions during cache storage are properly handled"""
+        # Create mock cache service that raises exception on set
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = None  # Cache miss
+        mock_cache.set.side_effect = Exception("Cache storage error")
+        
+        # Create coordinator with problematic cache service
+        coord_with_cache = StatisticsCoordinator(
+            case_filter_service=self.mock_filter,
+            cache_service=mock_cache
+        )
+        
+        # This should not raise an exception, the error should be caught
+        try:
+            result = coord_with_cache.generate_comprehensive_report(disease=["COVID-19"])
+            
+            # Verify both cache operations were attempted
+            mock_cache.get.assert_called_once()
+            mock_cache.set.assert_called_once()
+            
+            # We should still get a result, not an error
+            self.assertTrue(isinstance(result, dict))
+            self.assertNotIn("error", result)
+        except Exception as e:
+            self.fail(f"Exception was not properly handled: {str(e)}")

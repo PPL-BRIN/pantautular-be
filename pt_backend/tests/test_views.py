@@ -468,7 +468,33 @@ class StatisticsViewTest(TestCase):
         # Both should be forbidden
         self.assertEqual(get_response.status_code, 403)
         self.assertEqual(post_response.status_code, 403)
-
+    
+    def test_statistics_view_initialization(self):
+        """Test that StatisticsView correctly initializes coordinator with cache service"""
+        # Stop the coordinator patcher to test actual initialization
+        self.coordinator_patcher.stop()
+        
+        # Patch CacheService and CasesFilterService instead
+        with patch('pt_backend.views.CacheService') as mock_cache_service, \
+            patch('pt_backend.views.CasesFilterService') as mock_filter_service, \
+            patch('pt_backend.views.StatisticsCoordinator.__init__', return_value=None) as mock_coord_init:
+            
+            # Create a new view instance
+            view = StatisticsView()
+            
+            # Verify StatisticsCoordinator was initialized with cache_service
+            mock_coord_init.assert_called_once()
+            _, kwargs = mock_coord_init.call_args
+            
+            # Check that cache_service was provided
+            self.assertIn('cache_service', kwargs)
+            self.assertEqual(kwargs['cache_service'], mock_cache_service.return_value)
+        
+        # Restart the coordinator patcher for other tests
+        self.coordinator_patcher = patch('pt_backend.views.StatisticsCoordinator')
+        self.mock_coordinator = self.coordinator_patcher.start()
+        self.mock_coordinator.return_value = self.mock_coordinator_instance
+        
 class WeightedSeverityAnalysisViewTest(TestCase):
     def setUp(self):
         self.client = APIClient()
