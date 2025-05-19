@@ -76,4 +76,12 @@ class RegistrationService:
         base  = getattr(settings, "SITE_URL", "http://localhost:8000")
         return f"{base}/authentication/verify-email/?uid={uid}&token={token}"
 
-    
+    @classmethod
+    def _send_verification_email(cls, user: User) -> None:
+        verify_url  = cls._build_verify_url(user)
+        strategy    = VerificationEmailStrategy()
+        EmailService().send_email(
+            recipient_email=user.email,
+            strategy=strategy,
+            verify_url=verify_url,
+        )
