@@ -1,9 +1,12 @@
 from ..interface import ReportStrategy
 from collections import Counter, defaultdict
+from silk.profiling.profiler import silk_profile
+
 
 class HealthcareNewsStatisticsReport(ReportStrategy):
     """Generates statistics about healthcare news portals"""
 
+    @silk_profile(name="HealthcareNewsStatisticsReport")
     def generate_report(self, filtered_cases=None):
         """
         Generate healthcare news statistics report
