@@ -208,7 +208,7 @@ class VerifyEmailAPIViewTests(TestCase):
     # ------------------------------------------------------------------ #
     def test_verify_email_success(self):
         user = User.objects.create(
-            name="Ken", email="ken@example.com", password="x", is_active=False
+            name="Ken", email="ken@example.com", password="x", is_active=False #NOSONAR
         )
 
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
@@ -255,7 +255,7 @@ class VerifyEmailAPIViewTests(TestCase):
     # ------------------------------------------------------------------ #
     def test_expired_or_invalid_token_returns_400(self):
         user = User.objects.create(
-            name="Eva", email="eva@example.com", password="x", is_active=False
+            name="Eva", email="eva@example.com", password="x", is_active=False #NOSONAR
         )
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
