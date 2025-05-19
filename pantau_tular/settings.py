@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django_prometheus',
     'authentication',
     'rest_framework_simplejwt',
+    'silk',
 ]
 
 MIDDLEWARE = [
@@ -65,8 +66,15 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
+
+# Konfigurasi tambahan untuk Silk
+SILKY_PYTHON_PROFILER = True  # Aktifkan Python profiler
+SILKY_META = True  # Aktifkan pengumpulan metadata
+SILKY_ANALYZE_QUERIES = True  # Analisis query database
+SILKY_MAX_RECORDED_REQUESTS = 1000  # Batasan request yang disimpan
 
 REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
