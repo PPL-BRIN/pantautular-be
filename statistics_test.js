@@ -118,7 +118,8 @@ export default function() {
   };
 
   // Pilih secara acak antara GET dan POST
-  const usePost = Math.random() > 0.3; // 70% POST, 30% GET
+  const usePost = Math.random() > 0.3; // NOSONAR - This is only used to vary test scenarios and has no security implications
+  // 70% POST, 30% GET
   
   let response;
   const startTime = new Date().getTime();
@@ -135,12 +136,12 @@ export default function() {
       // 70% filter sederhana, 30% kompleks saat beban tinggi
       let filterIndices;
       if (__VU > 50) {
-        filterIndices = Math.random() > 0.3 ? simpleFilters : complexFilters;
+        filterIndices = Math.random() > 0.3 ? simpleFilters : complexFilters; // NOSONAR - This is only used to vary test scenarios and has no security implications
       } else {
         filterIndices = [...simpleFilters, ...complexFilters]; // Semua filter untuk beban rendah
       }
       
-      const filterIndex = filterIndices[Math.floor(Math.random() * filterIndices.length)];
+      const filterIndex = filterIndices[Math.floor(Math.random() * filterIndices.length)]; // NOSONAR - This is only used to vary test scenarios and has no security implications
       const filterConfig = filterConfigurations[filterIndex];
       
       // console.log(`Testing with ${filterConfig.name} (VU: ${__VU})`);
@@ -211,10 +212,13 @@ export default function() {
   
   // Jeda antar-request yang berbeda sesuai tingkat beban
   if (__VU > 100) {
-    sleep(Math.random() * 3 + 3); // 3-6 detik untuk beban sangat tinggi
+    sleep(Math.random() * 3 + 3); // NOSONAR - This is only used to vary test scenarios and has no security implications
+    // // 3-6 detik untuk beban sangat tinggi
   } else if (__VU > 50) {
-    sleep(Math.random() * 2 + 2); // 2-4 detik untuk beban tinggi
+    sleep(Math.random() * 2 + 2); // NOSONAR - This is only used to vary test scenarios and has no security implications
+    // 2-4 detik untuk beban tinggi
   } else {
-    sleep(Math.random() * 2 + 1); // 1-3 detik untuk beban normal
+    sleep(Math.random() * 2 + 1); // NOSONAR - This is only used to vary test scenarios and has no security implications
+    // 1-3 detik untuk beban normal
   }
 }
