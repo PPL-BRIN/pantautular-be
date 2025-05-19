@@ -1,11 +1,13 @@
 from pt_backend.statistics.factory import ReportFactory
 from pt_backend.statistics.reports.prevalence import PrevalenceStatistics
+from silk.profiling.profiler import silk_profile
 
 class StatisticsCoordinator:
     def __init__(self, case_filter_service):
         self.case_filter_service = case_filter_service
         self.strategies = ReportFactory.get_all()
 
+    @silk_profile(name='Generate Comprehensive Report')
     def generate_comprehensive_report(self, **filters):
         # filter data
         try:
