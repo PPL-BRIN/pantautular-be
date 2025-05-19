@@ -7,7 +7,7 @@ set SECRET_API_KEY=test-api-key
 
 echo 1. Running k6 stress test with 150 users...
 echo.
-k6 run --env SECRET_API_KEY=%SECRET_API_KEY% --summary-export=results.json statistics_test.js
+k6 run --env SECRET_API_KEY=%SECRET_API_KEY% statistics_test.js
 
 if %errorlevel% neq 0 (
     echo.
@@ -17,32 +17,19 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo 2. Test completed. Analyzing results...
+echo 2. Test completed. Results displayed above.
 echo.
 
-REM Check if results.json exists
-if not exist results.json (
-    echo ERROR: No results file generated. The test may have failed.
-    goto :end
-)
+echo Summary of key metrics:
+echo - http_req_duration: Total request duration (DNS + connection + TLS + processing + waiting)
+echo - http_req_failed: Rate of failed requests (non-2xx responses)
+echo - checks: Rate of successful checks
+echo - iterations: Number of complete iterations of the default function
 
-REM Check if Python is installed
-where python >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Running Python analysis script...
-    python analyze_results.py results.json
-    if %errorlevel% neq 0 (
-        echo Error running analysis script. Examining raw JSON...
-        echo.
-        echo Raw JSON preview:
-        powershell -Command "if(Test-Path results.json){Get-Content results.json -Head 20}else{Write-Host 'results.json not found'}"
-        echo.
-        echo [Full results saved to results.json]
-    )
-) else (
-    echo Python not found. Raw results:
-    powershell -Command "if(Test-Path results.json){Get-Content results.json -Head 20}else{Write-Host 'results.json not found'}"
-)
+echo.
+echo For detailed analysis, view the test results above.
+echo A summary JSON has also been exported to: results.json
+echo.
 
 :end
 echo.
