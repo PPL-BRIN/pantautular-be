@@ -1,9 +1,12 @@
 from ..interface import ReportStrategy
 from collections import Counter, defaultdict
+from silk.profiling.profiler import silk_profile
+
 
 class LocalPortalStatisticsReport(ReportStrategy):
     """Generates local portal statistics"""
 
+    @silk_profile(name="LocalPortalStatisticsReport")
     def generate_report(self, filtered_cases=None):
         """
         Generates local portal statistics report
