@@ -1,6 +1,7 @@
 from datetime import datetime
 from pt_backend.interfaces import CaseRepositoryInterface
 from ..interface import ReportStrategy
+from django.core.cache import cache
 from silk.profiling.profiler import silk_profile
 
 class PrevalenceStatistics(ReportStrategy):
@@ -31,28 +32,40 @@ class PrevalenceStatistics(ReportStrategy):
                     sd = sd.split("T")[0]
                 year = datetime.strptime(sd, "%Y-%m-%d").year
 
+            # Cek cache berdasarkan tahun
+            cache_key = f"prevalence_stats:{year}"
+            cached_result = cache.get(cache_key)
+            if cached_result:
+                return cached_result
+            
             # 2) ambil data dan hitung
             cases = self.repository.get_cases_by_year(year)
             total_cases = cases.count()
 
             pop = self.POPULATION_DATA.get(year)
             if not pop:
-                return {
+                result = {
                     "year": year,
                     "total_cases": total_cases,
                     "population": "Angka jiwa belum tercatat",
                     "prevalence": "No Data"
                 }
+                cache.set(cache_key, result, 3600)  # Cache 1 jam
+                return result
 
             population = int(pop * 1_000)
             prevalence = (total_cases / population) * 100
 
-            return {
+            result = {
                 "year": year,
                 "total_cases": total_cases,
                 "population": population,
                 "prevalence": round(prevalence, 4)
             }
 
+            # Simpan ke cache
+            cache.set(cache_key, result, 3600)  # Cache 1 jam
+            return result
+        
         except Exception as e:
             return {"error": f"Error calculating prevalence: {e}"}
