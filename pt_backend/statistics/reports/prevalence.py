@@ -1,6 +1,7 @@
 from datetime import datetime
 from pt_backend.interfaces import CaseRepositoryInterface
 from ..interface import ReportStrategy
+from silk.profiling.profiler import silk_profile
 
 class PrevalenceStatistics(ReportStrategy):
     def __init__(self, repository: CaseRepositoryInterface):
@@ -14,6 +15,7 @@ class PrevalenceStatistics(ReportStrategy):
             2024: 281603.8,   
         }
 
+    @silk_profile(name="Prevalence Statistics Report")
     def generate_report(self, filtered_cases=None, **kwargs) -> dict:
         del filtered_cases  # Unused parameter
         
