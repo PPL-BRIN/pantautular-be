@@ -1,9 +1,11 @@
 from collections import Counter
 from ..interface import ReportStrategy
+from silk.profiling.profiler import silk_profile
 
 
 class SeverityGroupingReport(ReportStrategy):
  
+    @silk_profile(name='Generate Severity Grouping Report')
     def generate_report(self, filtered_cases = None):
         severity_counts = Counter()
         total_cases = 0
