@@ -144,7 +144,7 @@ export default function() {
       const filterIndex = filterIndices[Math.floor(Math.random() * filterIndices.length)]; // NOSONAR - This is only used to vary test scenarios and has no security implications
       const filterConfig = filterConfigurations[filterIndex];
       
-      // console.log(`Testing with ${filterConfig.name} (VU: ${__VU})`);
+      console.log(`Testing with ${filterConfig.name} (VU: ${__VU})`);
       
       response = http.post(
         `${baseURL}/api/statistics/`,
