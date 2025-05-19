@@ -100,7 +100,7 @@ class DjangoEmailProvider(EmailProvider):
         except TemplateDoesNotExist:
             raise FileNotFoundError(f"The template '{template_name}' does not exist.")
         
-        # Create a simple text version of the email
+        
         text_content = "Please view this email in an HTML-capable client to see the content."
         if "reset_link" in context:
             text_content = f"Reset your password by visiting this link: {context['reset_link']}"
@@ -162,8 +162,8 @@ class EmailService:
     def _get_default_providers():
         """Get the default list of email providers"""
         return [
+            DjangoEmailProvider(),
             BrevoEmailProvider(),
-            DjangoEmailProvider()
         ]
     
 
