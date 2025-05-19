@@ -1,9 +1,11 @@
 from ..interface import ReportStrategy
 from collections import Counter
+from silk.profiling.profiler import silk_profile
 
 class GenderGroupingReport(ReportStrategy):
     """Generates gender distribution statistics"""
 
+    @silk_profile(name="Generate Gender Grouping Report")
     def generate_report(self, filtered_cases=None):
         """Generate gender distribution report"""
         gender_counts = Counter()
