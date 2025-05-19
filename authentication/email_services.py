@@ -167,3 +167,17 @@ class EmailService:
         ]
     
 
+class VerificationEmailStrategy(EmailContentStrategy):
+    """Strategy for account-activation / e-mail-verification messages."""
+
+    def get_subject(self):
+        return "Please confirm your e-mail"
+
+    def get_template_name(self):
+        return "verification_email.html"
+
+    def get_context_data(self, **kwargs):
+        verify_url = kwargs.get("verify_url")
+        if not verify_url:
+            raise ValueError("verify_url is required for verification e-mails")
+        return {"verify_url": verify_url}
