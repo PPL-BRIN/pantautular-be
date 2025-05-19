@@ -1,8 +1,11 @@
 from ..interface import ReportStrategy
+from silk.profiling.profiler import silk_profile
+
 
 class AgeGroupingReport(ReportStrategy):
     """Generates age grouping statistics"""
     
+    @silk_profile(name="AgeGroupingReport")
     def generate_report(self, filtered_cases=None):
         """Generate age grouping report"""
         age_groups = {
