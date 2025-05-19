@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.http import require_http_methods
-
+from silk.profiling.profiler import silk_profile
 
 from pt_backend.models import Location
 from .serializers import CaseLocationSerializer, DiseaseSeverityStatsSerializer, LocationSeverityStatsSerializer, ProvinceHumiditySerializer, ProvinceTemperatureSerializer, ProvincePrecipitationSerializer
@@ -262,6 +262,7 @@ class StatisticsView(APIView):
             case_filter_service=case_filter_service
         )
     
+    @silk_profile(name='Statistics GET')
     def get(self, request):
         """Get all statistics without applying any filters"""
         try:
@@ -277,6 +278,7 @@ class StatisticsView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
+    @silk_profile(name='Statistics POST with filters')
     def post(self, request):
         try:
             filter_params = self._get_filter_params(request)
