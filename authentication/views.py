@@ -29,6 +29,9 @@ from rest_framework_simplejwt.tokens import AccessToken
 import jwt
 
 from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,46 @@ class SignupAPIView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"id": dto.user.id}, status=status.HTTP_201_CREATED)
+    
+    
+class VerifyEmailAPIView(APIView):
+    """
+    GET /api/verify-email/?uid=<uidb64>&token=<token>
+    Activates the account after token validation.
+    """
+    authentication_classes = []
+    permission_classes     = []
+
+    def get(self, request):
+        uidb64 = request.query_params.get("uid")
+        token  = request.query_params.get("token")
+
+        if not uidb64 or not token:
+            return Response(
+                {"detail": "Bad request."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            uid  = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (ValueError, User.DoesNotExist):
+            return Response(
+                {"detail": "Invalid verification link."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if default_token_generator.check_token(user, token):
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+            return Response(
+                {"detail": "E-mail verified — account activated!"},
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {"detail": "Link expired or invalid."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 class PasswordResetLinkRequestView(APIView):
     authentication_classes = [APIKeyAuthentication]
