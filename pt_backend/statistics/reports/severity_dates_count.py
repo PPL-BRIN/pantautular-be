@@ -2,8 +2,11 @@ from asyncio.log import logger
 from collections import defaultdict
 from datetime import datetime
 from ..interface import ReportStrategy
+from silk.profiling.profiler import silk_profile
+
 
 class SeverityDatesCountReport(ReportStrategy):
+    @silk_profile(name="Severity Dates Count Report")
     def generate_report(self, filtered_cases=None):
         """Generate severity dates count report"""
         if not filtered_cases:
