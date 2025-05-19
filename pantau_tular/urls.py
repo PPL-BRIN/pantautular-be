@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django_prometheus import exports
+from .settings import DEBUG
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,3 +27,7 @@ urlpatterns = [
     path('authentication/', include("authentication.urls"))
 ]
 
+if DEBUG:
+    urlpatterns += [
+        path('silk/', include('silk.urls', namespace='silk')),
+    ]
