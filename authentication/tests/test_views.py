@@ -8,6 +8,9 @@ from rest_framework.test import APIRequestFactory
 from authentication.views import SignupAPIView
 from pt_backend.models import User
 from rest_framework import status
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
 
 client = APIClient()
 
@@ -189,3 +192,82 @@ class LoginAPIViewTests(TestCase):
             email='test@example.com', 
             password='Password123!' # NOSONAR – test data, not a real secret
         )
+
+
+
+
+
+VERIFY_URL = reverse("verify-email")  # "/authentication/verify-email/"
+
+
+class VerifyEmailAPIViewTests(TestCase):
+    """Covers every code path of VerifyEmailAPIView."""
+
+    # ------------------------------------------------------------------ #
+    #                           HAPPY PATH                               #
+    # ------------------------------------------------------------------ #
+    def test_verify_email_success(self):
+        user = User.objects.create(
+            name="Ken", email="ken@example.com", password="x", is_active=False #NOSONAR
+        )
+
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token  = default_token_generator.make_token(user)
+
+        resp = self.client.get(VERIFY_URL, {"uid": uidb64, "token": token})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("account activated", resp.json()["detail"].lower())
+
+        # DB side-effect: user now active
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+
+    # ------------------------------------------------------------------ #
+    #                 missing uid / token  → 400 BAD REQUEST             #
+    # ------------------------------------------------------------------ #
+    def test_missing_params_returns_400(self):
+        # no params at all
+        resp1 = self.client.get(VERIFY_URL)
+        self.assertEqual(resp1.status_code, 400)
+        self.assertIn("bad request", resp1.json()["detail"].lower())
+
+        # uid present, token missing
+        resp2 = self.client.get(VERIFY_URL, {"uid": "abc"})
+        self.assertEqual(resp2.status_code, 400)
+
+    # ------------------------------------------------------------------ #
+    #        invalid uidb64  OR  non-existent user  → 400 INVALID LINK   #
+    # ------------------------------------------------------------------ #
+    def test_invalid_uid_or_unknown_user_returns_400(self):
+        # completely malformed uid
+        resp1 = self.client.get(VERIFY_URL, {"uid": "!", "token": "x"})
+        self.assertEqual(resp1.status_code, 400)
+        self.assertIn("invalid verification", resp1.json()["detail"].lower())
+
+        # well-formed uid but pk does not exist
+        uidb64 = urlsafe_base64_encode(force_bytes(9999))
+        resp2  = self.client.get(VERIFY_URL, {"uid": uidb64, "token": "x"})
+        self.assertEqual(resp2.status_code, 400)
+
+    # ------------------------------------------------------------------ #
+    #          valid uid but **invalid / expired** token  → 400          #
+    # ------------------------------------------------------------------ #
+    def test_expired_or_invalid_token_returns_400(self):
+        user = User.objects.create(
+            name="Eva", email="eva@example.com", password="x", is_active=False #NOSONAR
+        )
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+        # Patch check_token to force False without waiting for expiry
+        with patch(
+            "authentication.views.default_token_generator.check_token",
+            return_value=False,
+        ):
+            resp = self.client.get(VERIFY_URL, {"uid": uidb64, "token": "bogus"})
+            self.assertEqual(resp.status_code, 400)
+            self.assertIn("expired or invalid", resp.json()["detail"].lower())
+
+        # User should still be inactive
+        user.refresh_from_db()
+        self.assertFalse(user.is_active)

@@ -9,6 +9,7 @@ class User(models.Model):
     role = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
     last_login = models.DateTimeField(null=True, blank=True)
+    is_active   = models.BooleanField(default=False)
 
     def has_role(self, role_name):
         return self.role == role_name

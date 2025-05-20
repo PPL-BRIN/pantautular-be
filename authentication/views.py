@@ -29,6 +29,9 @@ from rest_framework_simplejwt.tokens import AccessToken
 import jwt
 
 from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,14 +39,13 @@ logger = logging.getLogger(__name__)
 INTERNAL_SERVER_ERR_MSG = "An unexpected error occurred. Please try again later."
 
 class SignupAPIView(APIView):
-
     authentication_classes = [APIKeyAuthentication]
-    permission_classes     = []                  
-    throttle_classes       = [UserRateThrottle]  
+    permission_classes     = []
+    throttle_classes       = [UserRateThrottle]
 
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)       
+        serializer.is_valid(raise_exception=True)
 
         try:
             dto = RegistrationService.register_user(
@@ -51,9 +53,58 @@ class SignupAPIView(APIView):
                 **serializer.validated_data,
             )
         except RegistrationError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        return Response({"id": dto.user.id}, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                "detail": f"A verification email has been sent to {dto.user.email}",
+                "id": dto.user.id,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    
+class VerifyEmailAPIView(APIView):
+    """
+    GET /api/verify-email/?uid=<uidb64>&token=<token>
+    Activates the account after token validation.
+    """
+    authentication_classes = []
+    permission_classes     = []
+
+    def get(self, request):
+        uidb64 = request.query_params.get("uid")
+        token  = request.query_params.get("token")
+
+        if not uidb64 or not token:
+            return Response(
+                {"detail": "Bad request."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            uid  = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (ValueError, User.DoesNotExist):
+            return Response(
+                {"detail": "Invalid verification link."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if default_token_generator.check_token(user, token):
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+            return Response(
+                {"detail": "E-mail verified — account activated!"},
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {"detail": "Link expired or invalid."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
 
 class PasswordResetLinkRequestView(APIView):
     authentication_classes = [APIKeyAuthentication]
@@ -256,45 +307,54 @@ class ChangePasswordView(APIView):
 
 class LoginAPIView(APIView):
     authentication_classes = [APIKeyAuthentication]
-    throttle_classes = [UserRateThrottle]
-    
+    throttle_classes       = [UserRateThrottle]
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        user_repository = UserRepository()
-        self.auth_service = AuthService(user_repository)
+        self.auth_service = AuthService(UserRepository())
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         try:
             tokens = self.auth_service.login(
-                email=serializer.validated_data['email'],
-                password=serializer.validated_data['password']
+                email=serializer.validated_data["email"],
+                password=serializer.validated_data["password"],
             )
 
-            if tokens and isinstance(tokens, dict) and tokens.get('locked'):
+            # 🔒 Locked
+            if tokens and tokens.get("locked"):
                 return Response(
-                    {"detail": tokens['message']},
-                    status=status.HTTP_423_LOCKED
+                    {"detail": tokens["message"]},
+                    status=status.HTTP_423_LOCKED,
                 )
-            
-            if not tokens:
+
+            # ❌ Not verified
+            if tokens and tokens.get("inactive"):
                 return Response(
-                    {"detail": "Invalid email or password"},
-                    status=status.HTTP_401_UNAUTHORIZED
+                    {"detail": tokens["message"]},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
-            
+
+            # ❌ Bad credentials
+            if tokens is None:
+                return Response(
+                    {"detail": "Invalid e-mail or password."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+            # ✅ Success
             return Response(
                 {
-                    "detail": "Login successful",
-                    "access_token": tokens["access_token"]
+                    "detail": "Login successful.",
+                    "access_token": tokens["access_token"],
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
-            
+
         except Exception:
             return Response(
                 {"detail": "Login failed. Please try again."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
