@@ -1,3 +1,4 @@
+import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -5,6 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.http import require_http_methods
 
 
+from authentication.permissions import IsTokenAuthenticated
+from authentication.security import CustomJWTAuthentication
 from pt_backend.models import Location
 from .serializers import CaseLocationSerializer, DiseaseSeverityStatsSerializer, LocationSeverityStatsSerializer, ProvinceHumiditySerializer, ProvinceTemperatureSerializer, ProvincePrecipitationSerializer
 from .services import AverageSeverityByProvince, CacheService, CaseService, CaseDetailService, DiseaseService, LocationService, CasesFilterService, SeverityFilteringService, ClimateService
@@ -28,7 +31,11 @@ from datetime import datetime
 from django.db import connections
 from django.db.utils import OperationalError
 
+logger = logging.getLogger(__name__)
+
 INTERNAL_SERVER_ERR_MSG = "An unexpected error occurred. Please try again later."
+CACHE_TIMEOUT = 600
+CACHE_KEY_PREFIX = "stats_report_"
 
 class AllCaseLocationsView(APIView):
     authentication_classes = [APIKeyAuthentication]
@@ -349,15 +356,31 @@ class SeverityFilteringStatsView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = []
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.cache_service = CacheService()
+        self.cache_timeout = CACHE_TIMEOUT
+    
     def post(self, request):
         """Handle POST requests with JSON payload for filtering"""
         try:
             # Extract and process filter parameters
             filter_params = self._extract_filter_parameters(request.data)
             
-            # Initialize service and get results
+            # Generate cache key based on filter parameters
+            cache_key = self._generate_cache_key(filter_params)
+            
+            # Check if results are in cache
+            cached_results = self.cache_service.get(cache_key)
+            if cached_results:
+                return Response(cached_results, status=status.HTTP_200_OK)
+            
+            # Initialize service and get results if not in cache
             severity_filter = SeverityFilteringService()
             results = severity_filter.get_filter_stats(**filter_params)
+            
+            # Cache the results
+            self.cache_service.set(cache_key, results, timeout=self.cache_timeout)
             
             return Response(results, status=status.HTTP_200_OK)
         
@@ -366,6 +389,27 @@ class SeverityFilteringStatsView(APIView):
                 {"error": f"Error processing filter request: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+    
+    def _generate_cache_key(self, filter_params):
+        try:
+            # Convert filter items to something hashable
+            hashable_items = []
+            for k, v in filter_params.items():
+                if isinstance(v, list):
+                    v = tuple(v)  # Convert lists to tuples (which are hashable)
+                elif isinstance(v, dict):
+                    # Convert nested dictionaries to tuples of tuples
+                    v = tuple((k2, tuple(v2) if isinstance(v2, list) else v2) 
+                                for k2, v2 in v.items())
+                hashable_items.append((k, v))
+            cache_key = f"{CACHE_KEY_PREFIX}{hash(frozenset(hashable_items))}"
+            cached_result = self.cache_service.get(cache_key)
+            if cached_result:
+                return cached_result
+        except Exception as e:
+            logger.error(f"Cache key generation error: {str(e)}")
+            return None
+
     
     def _extract_filter_parameters(self, data):
         """Extract and process filter parameters from request data"""
@@ -426,8 +470,8 @@ class SeverityFilteringStatsView(APIView):
 
 
 class ProvinceHumidityView(APIView):
-    authentication_classes = [APIKeyAuthentication]
-    permission_classes = []
+    authentication_classes = [CustomJWTAuthentication, APIKeyAuthentication]
+    permission_classes = [IsTokenAuthenticated]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -456,8 +500,8 @@ class ProvinceHumidityView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ProvincePrecipitationView(APIView):
-    authentication_classes = [APIKeyAuthentication]
-    permission_classes = []
+    authentication_classes = [CustomJWTAuthentication, APIKeyAuthentication]
+    permission_classes = [IsTokenAuthenticated]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -486,8 +530,8 @@ class ProvincePrecipitationView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ProvinceTemperatureView(APIView):
-    authentication_classes = [APIKeyAuthentication]
-    permission_classes = []
+    authentication_classes = [CustomJWTAuthentication, APIKeyAuthentication]
+    permission_classes = [IsTokenAuthenticated]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -516,8 +560,8 @@ class ProvinceTemperatureView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class WeightedSeverityAnalysisView(APIView):
-    authentication_classes = [APIKeyAuthentication]
-    permission_classes = []
+    authentication_classes = [CustomJWTAuthentication, APIKeyAuthentication]
+    permission_classes = [IsTokenAuthenticated]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
