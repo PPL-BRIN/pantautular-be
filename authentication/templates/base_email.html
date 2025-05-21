@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PantauTular{% endblock %}</title>
+    <style>
+        /* Basic styling for the email body */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        /* Container for the main email content */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        /* Header section with logo */
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .logo {
+            max-height: 115px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        /* Content area */
+        .content {
+            padding: 30px 20px;
+        }
+        .content a {
+            color: #1a73e8;
+            text-decoration: underline;
+        }
+        /* Main verification button */
+        .verify-link {
+            display: inline-block;
+            margin-top: 15px;
+        }
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #777777;
+            border-top: 1px solid #eeeeee;
+            margin-top: 20px;
+        }
+        .footer a {
+            color: #777777;
+            text-decoration: underline;
+        }
+        /* Note block */
+        .note {
+            font-size: 13px;
+            color: #777777;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px dashed #eeeeee;
+        }
+        .note p {
+            word-break: break-all;
+        }
+        /* Responsive tweaks */
+        @media only screen and (max-width: 600px) {
+            .container { width: 100%; padding: 15px; }
+            .content   { padding: 20px 15px; }
+            .header    { padding: 15px 0;   }
+            .footer    { padding: 15px;     }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="http://img.mailinblue.com/9142069/images/680fa234a2e1d_1745855028.png"
+                 alt="Company Logo"
+                 class="logo">
+        </div>
+        {% block content %}{% endblock %}
+        <div class="footer">
+            <p>&copy; 2025 PantauTular. All rights reserved.</p>
+            <p>123 Pondok Cina, Depok, Indonesia</p>
+            <p><a href="https://pantautular.netlify.app/">Contact Us</a></p>
+        </div>
+    </div>
+</body>
+</html>
