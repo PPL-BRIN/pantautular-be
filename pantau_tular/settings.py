@@ -40,6 +40,7 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1",".up.railway.app"]
 # Application definition
 
 INSTALLED_APPS = [
+    "django_dramatiq",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -68,10 +69,27 @@ MIDDLEWARE = [
     'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
+DRAMATIQ_BROKER = {
+    "BROKER": "dramatiq.brokers.rabbitmq.RabbitmqBroker",
+    "OPTIONS": {
+        "url": "amqps://felariga:dZMgS20yaSWjh2MOdfa3VY-9ErV1qmCX@mustang.rmq.cloudamqp.com/felariga"  
+    },
+    "MIDDLEWARE": [
+        "dramatiq.middleware.AgeLimit",
+        "dramatiq.middleware.TimeLimit",
+        "dramatiq.middleware.Retries",
+        "dramatiq.middleware.Callbacks",
+        "django_dramatiq.middleware.DbConnectionsMiddleware",
+        "django_dramatiq.middleware.AdminMiddleware",
+    ]
+}
+
+DRAMATIQ_TASKS_DATABASE = "default"
+
 REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "user": "10/min",   
-        "password_reset": "5/day",
+        "password_reset": "100/day",
     },
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',

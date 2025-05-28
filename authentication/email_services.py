@@ -162,6 +162,6 @@ class EmailService:
     def _get_default_providers():
         """Get the default list of email providers"""
         return [
-            BrevoEmailProvider(),
-            DjangoEmailProvider()
+            DjangoEmailProvider(),
+            BrevoEmailProvider()
         ]

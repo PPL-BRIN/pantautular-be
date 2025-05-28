@@ -62,5 +62,6 @@ sib-api-v3-sdk
 prometheus-client==0.20.0
 django-prometheus==2.3.1
 psutil
-
 psutil==7.0.0
+dramatiq[rabbitmq, watch]
+django-dramatiq

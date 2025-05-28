@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from authentication.email_services import EmailService, PasswordResetEmailStrategy
+from authentication.tasks import send_password_reset_email_async
 
 import os
 import logging
@@ -97,11 +98,12 @@ class PasswordResetService:
             
             # Use the email service with strategy pattern
             try:
-                self.email_service.send_email(
-                    recipient_email=email,
-                    strategy=self.reset_strategy,
-                    reset_link=reset_link
-                )
+                send_password_reset_email_async.send(email, reset_link)
+                # self.email_service.send_email(
+                #     recipient_email=email,
+                #     strategy=self.reset_strategy,
+                #     reset_link=reset_link
+                # )
                 logger.info(f"Password reset email sent to {email}.")
                 return True
             except RuntimeError as e:
